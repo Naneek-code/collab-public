@@ -201,6 +201,7 @@ const TOGGLE_SHORTCUTS: Record<string, ShortcutEntry[]> = {
   ArrowLeft: [{ modifier: altOnly, action: "focus-tile-left" }],
   ArrowUp: [{ modifier: altOnly, action: "focus-tile-up" }],
   ArrowDown: [{ modifier: altOnly, action: "focus-tile-down" }],
+  KeyF: [{ modifier: altCmdOrCtrl, action: "toggle-fullscreen-tile" }],
 };
 
 const TOGGLE_SHORTCUT_KEYS: Record<string, ShortcutEntry[]> = {
@@ -210,6 +211,7 @@ const TOGGLE_SHORTCUT_KEYS: Record<string, ShortcutEntry[]> = {
   b: TOGGLE_SHORTCUTS.KeyB!,
   n: TOGGLE_SHORTCUTS.KeyN!,
   w: TOGGLE_SHORTCUTS.KeyW!,
+  f: TOGGLE_SHORTCUTS.KeyF!,
 };
 
 function normalizeShortcutKey(key: string | undefined): string | null {

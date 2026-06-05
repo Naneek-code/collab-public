@@ -1118,6 +1118,16 @@ async function init() {
 				noteSurfaceFocus("canvas");
 				minimap.update();
 			}
+		} else if (action === "toggle-fullscreen-tile") {
+			const fsId = tileManager.getFullscreenTileId();
+			if (fsId) {
+				tileManager.toggleTileFullscreen(fsId);
+			} else {
+				const focused = tileManager.getFocusedTile();
+				if (focused?.type === "term") {
+					tileManager.toggleTileFullscreen(focused.id);
+				}
+			}
 		} else if (
 			action === "focus-tile-right" || action === "focus-tile-left" ||
 			action === "focus-tile-up" || action === "focus-tile-down"

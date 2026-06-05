@@ -848,6 +848,7 @@ export function createTileManager({
 		restoreCanvasState,
 		getTileDOMs: () => tileDOMs,
 		getFocusedTileId: () => focusedTileId,
+		getFocusedTile: () => getTile(focusedTileId),
 		setFocusedTileId: (id) => { focusedTileId = id; },
 		renameTile,
 		toggleTileFullscreen,

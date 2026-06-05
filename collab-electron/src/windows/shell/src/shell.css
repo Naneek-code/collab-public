@@ -1043,6 +1043,9 @@ body.platform-win {
 .canvas-tile.tile-fullscreen .tile-title-bar {
 	padding-left: 86px;
 	min-height: 38px;
+}
+
+.canvas-tile.tile-fullscreen .tile-btn-group {
 	-webkit-app-region: no-drag;
 	position: relative;
 	z-index: 101;
