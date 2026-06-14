@@ -402,7 +402,7 @@ function TerminalTab({
 		<div
 			ref={containerRef}
 			className="terminal-tab"
-			style={{ display: visible ? "block" : "none" }}
+			style={{ display: visible ? "flex" : "none" }}
 		/>
 	);
 }
