@@ -228,6 +228,18 @@ contextBridge.exposeInMainWorld("shellApi", {
 
   getHomePath: (): string => ipcRenderer.sendSync("get-home-path"),
 
+  windowMinimize: () => ipcRenderer.send("window:minimize"),
+  windowMaximizeToggle: () => ipcRenderer.send("window:maximize-toggle"),
+  windowClose: () => ipcRenderer.send("window:close"),
+  windowIsMaximized: (): Promise<boolean> =>
+    ipcRenderer.invoke("window:is-maximized"),
+  onWindowMaximizeChange: (cb: (maximized: boolean) => void) => {
+    const handler = (_event: unknown, maximized: boolean) => cb(maximized);
+    ipcRenderer.on("window:maximize-changed", handler);
+    return () =>
+      ipcRenderer.removeListener("window:maximize-changed", handler);
+  },
+
   ptyKillSession: (sessionId: string): Promise<void> =>
     ipcRenderer.invoke("pty:kill", { sessionId }),
 

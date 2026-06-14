@@ -28,6 +28,93 @@ canvasEl.tabIndex = -1;
 document.documentElement.classList.toggle("platform-win", IS_WINDOWS);
 document.body.classList.toggle("platform-win", IS_WINDOWS);
 
+// -- Windows window controls --
+
+if (IS_WINDOWS) {
+	const winControls = document.getElementById("window-controls");
+	document
+		.getElementById("win-minimize")
+		.addEventListener("click", () => window.shellApi.windowMinimize());
+	document
+		.getElementById("win-maximize")
+		.addEventListener("click", () => window.shellApi.windowMaximizeToggle());
+	document
+		.getElementById("win-close")
+		.addEventListener("click", () => window.shellApi.windowClose());
+
+	const syncMaximized = (maximized) =>
+		winControls.classList.toggle("is-maximized", maximized);
+	window.shellApi.windowIsMaximized().then(syncMaximized);
+	window.shellApi.onWindowMaximizeChange(syncMaximized);
+}
+
+// -- Edge toggles: reveal on hover near their position --
+
+{
+	const REVEAL_PAD = 70;
+	const hoverToggles = [
+		document.getElementById("nav-toggle"),
+		document.getElementById("agent-toggle"),
+		document.getElementById("titlebar-toggle"),
+	].filter(Boolean);
+
+	const nearRect = (el, x, y) => {
+		const r = el.getBoundingClientRect();
+		if (r.width === 0 && r.height === 0) return false;
+		return (
+			x >= r.left - REVEAL_PAD &&
+			x <= r.right + REVEAL_PAD &&
+			y >= r.top - REVEAL_PAD &&
+			y <= r.bottom + REVEAL_PAD
+		);
+	};
+
+	let cursorX = 0;
+	let cursorY = 0;
+	let revealScheduled = false;
+	const updateReveal = () => {
+		revealScheduled = false;
+		for (const el of hoverToggles) {
+			el.classList.toggle("reveal", nearRect(el, cursorX, cursorY));
+		}
+	};
+	window.addEventListener(
+		"mousemove",
+		(e) => {
+			cursorX = e.clientX;
+			cursorY = e.clientY;
+			if (!revealScheduled) {
+				revealScheduled = true;
+				requestAnimationFrame(updateReveal);
+			}
+		},
+		{ passive: true },
+	);
+
+	// -- Title bar show/hide (Windows) --
+
+	const titlebarToggle = document.getElementById("titlebar-toggle");
+	if (IS_WINDOWS && titlebarToggle) {
+		const applyTitlebarHidden = (hidden) => {
+			document.body.classList.toggle("titlebar-collapsed", hidden);
+			titlebarToggle.setAttribute("aria-pressed", String(!hidden));
+			const label = hidden ? "Show title bar" : "Hide title bar";
+			titlebarToggle.setAttribute("aria-label", label);
+			titlebarToggle.title = label;
+		};
+		titlebarToggle.addEventListener("click", () => {
+			const hidden = !document.body.classList.contains(
+				"titlebar-collapsed",
+			);
+			applyTitlebarHidden(hidden);
+			window.shellApi.setPref("titlebar-hidden", hidden);
+		});
+		window.shellApi
+			.getPref("titlebar-hidden")
+			.then((v) => applyTitlebarHidden(v === true));
+	}
+}
+
 // -- Alpha banner dismiss --
 
 document.getElementById("alpha-dismiss").addEventListener("click", (e) => {

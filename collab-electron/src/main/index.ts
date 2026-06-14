@@ -482,6 +482,7 @@ function createWindow(): void {
 
   if (process.platform === "win32") {
     Object.assign(windowOptions, {
+      titleBarStyle: "hidden",
       backgroundColor: "#00000000",
       backgroundMaterial: "mica",
     } satisfies Partial<Electron.BrowserWindowConstructorOptions>);
@@ -497,6 +498,16 @@ function createWindow(): void {
   if (state.isMaximized) {
     mainWindow.maximize();
   }
+
+  const sendMaximizeState = () => {
+    if (!mainWindow || mainWindow.isDestroyed()) return;
+    mainWindow.webContents.send(
+      "window:maximize-changed",
+      mainWindow.isMaximized(),
+    );
+  };
+  mainWindow.on("maximize", sendMaximizeState);
+  mainWindow.on("unmaximize", sendMaximizeState);
 
   mainWindow.on("move", debouncedSaveWindowState);
   mainWindow.on("resize", debouncedSaveWindowState);
@@ -530,6 +541,25 @@ ipcMain.on("analytics:track-event", (_event, name, properties) => {
 ipcMain.on("get-home-path", (event) => {
   event.returnValue = app.getPath("home");
 });
+
+ipcMain.on("window:minimize", (event) => {
+  BrowserWindow.fromWebContents(event.sender)?.minimize();
+});
+
+ipcMain.on("window:maximize-toggle", (event) => {
+  const win = BrowserWindow.fromWebContents(event.sender);
+  if (!win) return;
+  if (win.isMaximized()) win.unmaximize();
+  else win.maximize();
+});
+
+ipcMain.on("window:close", (event) => {
+  BrowserWindow.fromWebContents(event.sender)?.close();
+});
+
+ipcMain.handle("window:is-maximized", (event) =>
+  BrowserWindow.fromWebContents(event.sender)?.isMaximized() ?? false,
+);
 
 ipcMain.handle("shell:get-view-config", () => {
   const preload = pathToFileURL(

@@ -85,6 +85,11 @@ body.platform-win {
 	align-items: center;
 }
 
+.platform-win #titlebar {
+	background: var(--bg);
+	border-bottom: 1px solid var(--border);
+}
+
 #alpha-label {
 	position: fixed;
 	bottom: 8px;
@@ -110,6 +115,55 @@ body.platform-win {
 
 #alpha-label a:hover span {
 	text-decoration: underline;
+}
+
+/* ── Windows window controls ── */
+
+#window-controls {
+	display: none;
+	margin-left: auto;
+	height: 100%;
+	-webkit-app-region: no-drag;
+}
+
+.platform-win #window-controls {
+	display: flex;
+}
+
+#window-controls button {
+	width: 44px;
+	height: 100%;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	border: none;
+	background: transparent;
+	color: var(--muted);
+	cursor: pointer;
+	padding: 0;
+	transition: background 0.12s ease, color 0.12s ease;
+}
+
+#window-controls button:hover {
+	background: color-mix(in srgb, var(--fg) 9%, transparent);
+	color: var(--fg);
+}
+
+#win-close:hover {
+	background: #e81123;
+	color: #fff;
+}
+
+#win-maximize .icon-restore {
+	display: none;
+}
+
+#window-controls.is-maximized #win-maximize .icon-maximize {
+	display: none;
+}
+
+#window-controls.is-maximized #win-maximize .icon-restore {
+	display: inline;
 }
 
 /* ── Panels ── */
@@ -303,6 +357,10 @@ body.platform-win {
 #new-tile-btn:hover {
 	color: var(--fg);
 	background: var(--new-tile-btn-bg-hover);
+}
+
+.platform-win #panel-viewer:not(.agent-open) #new-tile-btn {
+	right: 142px;
 }
 
 #new-tile-btn:active {
@@ -598,6 +656,60 @@ body.platform-win {
 
 .panel-toggle:hover {
 	opacity: 0.9;
+}
+
+/* Toggles hidden until the cursor approaches their edge */
+
+.hover-toggle {
+	opacity: 0;
+	pointer-events: none;
+	transition: opacity 0.15s ease-in-out;
+}
+
+.hover-toggle.reveal {
+	opacity: 0.55;
+	pointer-events: auto;
+}
+
+.hover-toggle.reveal:hover {
+	opacity: 0.9;
+}
+
+#titlebar-toggle {
+	display: none;
+	position: fixed;
+	top: calc(var(--toolbar-height) + 4px);
+	left: 50%;
+	transform: translateX(-50%);
+	width: 44px;
+	height: 7px;
+	background: var(--muted);
+	border: none;
+	border-radius: 9999px;
+	cursor: pointer;
+	padding: 0;
+	z-index: 9001;
+	transition: opacity 0.15s ease-in-out, top 0.15s ease-in-out;
+}
+
+.platform-win #titlebar-toggle {
+	display: block;
+}
+
+.titlebar-collapsed #titlebar-toggle {
+	top: 6px;
+}
+
+body.titlebar-collapsed #titlebar {
+	display: none;
+}
+
+.platform-win.titlebar-collapsed #nav-toolbar {
+	padding-top: 8px;
+}
+
+.platform-win.titlebar-collapsed #panel-viewer:not(.agent-open) #new-tile-btn {
+	right: 10px;
 }
 
 /* ── Tooltips ── */
