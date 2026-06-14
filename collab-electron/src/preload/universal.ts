@@ -285,6 +285,8 @@ contextBridge.exposeInMainWorld("api", {
     ipcRenderer.invoke("pty:discover"),
   ptyReadMeta: (sessionId: string) =>
     ipcRenderer.invoke("pty:read-meta", sessionId),
+  agentResumeGet: (tileId: string) =>
+    ipcRenderer.invoke("agent-resume:get", tileId),
   onPtyData: (sessionId: string, cb: PtyDataCallback) => {
     getOrCreateListenerSet(dataListeners, sessionId).add(cb);
     const buffered = bufferedPtyData.get(sessionId);

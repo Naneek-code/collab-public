@@ -584,10 +584,13 @@ export function createTileManager({
 			window.shellApi.trackEvent(
 				"tile_closed", { type: tile.type },
 			);
-			if (tile.type === "term" && tile.ptySessionId) {
-				window.shellApi.ptyKillSession(tile.ptySessionId);
-				if (onTerminalTileClosed) {
-					onTerminalTileClosed(tile.ptySessionId);
+			if (tile.type === "term") {
+				window.shellApi.agentResumeClear(tile.id);
+				if (tile.ptySessionId) {
+					window.shellApi.ptyKillSession(tile.ptySessionId);
+					if (onTerminalTileClosed) {
+						onTerminalTileClosed(tile.ptySessionId);
+					}
 				}
 			}
 		}

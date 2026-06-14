@@ -29,6 +29,7 @@ import {
 import { registerIpcHandlers, setMainWindow } from "./ipc";
 import { registerCanvasRpc } from "./canvas-rpc";
 import { registerIntegrationsIpc } from "./integrations";
+import { initAgentResume, registerAgentResumeIpc } from "./agent-resume";
 import {
   registerMethod,
   startJsonRpcServer,
@@ -855,6 +856,7 @@ app.whenReady().then(async () => {
   registerIpcHandlers(config);
   registerBrowserIpc();
   registerIntegrationsIpc();
+  registerAgentResumeIpc();
   setupUpdateIPC();
   updateManager.init({
     onBeforeQuit: () => shutdownBackgroundServices(),
@@ -870,6 +872,7 @@ app.whenReady().then(async () => {
   createWindow();
   registerAgentIpc(mainWindow!, config);
   registerToggleShortcuts(mainWindow!);
+  initAgentResume();
 
   initMainAnalytics();
   trackEvent("app_launched");

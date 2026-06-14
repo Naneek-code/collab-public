@@ -997,6 +997,33 @@ export interface DiscoveredSession {
   meta: SessionMeta;
 }
 
+export interface LiveSidecarSession {
+  sessionId: string;
+  pid: number;
+  tileId?: string;
+}
+
+/**
+ * Live sidecar sessions with their PTY shell PID and owning tile id.
+ * Used by agent-resume to map an agent hook's process tree back to a tile.
+ */
+export async function listLiveSidecarSessions(): Promise<
+  LiveSidecarSession[]
+> {
+  if (getTerminalMode() === "tmux") return [];
+  try {
+    await ensureSidecar();
+    const list = await getSidecarClient().listSessions();
+    return list.map((s) => ({
+      sessionId: s.sessionId,
+      pid: s.pid,
+      tileId: s.tileId,
+    }));
+  } catch {
+    return [];
+  }
+}
+
 export async function discoverSessions(): Promise<DiscoveredSession[]> {
   const result: DiscoveredSession[] = [];
 

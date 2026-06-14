@@ -6,6 +6,12 @@ import { makeEndpointPath } from "../ipc-endpoint";
 export const SIDECAR_SOCKET_PATH = makeEndpointPath("pty-sidecar");
 export const SIDECAR_PID_PATH = join(COLLAB_DIR, "pty-sidecar.pid");
 export const SESSION_SOCKET_DIR = join(COLLAB_DIR, "pty-sessions");
+export const TERMINAL_SCROLLBACK_DIR = join(COLLAB_DIR, "terminal-scrollback");
+
+export function scrollbackFilePath(key: string): string {
+  const safe = key.replace(/[^a-zA-Z0-9_.-]/g, "_");
+  return join(TERMINAL_SCROLLBACK_DIR, `${safe}.log`);
+}
 
 export function sessionSocketPath(sessionId: string): string {
   if (process.platform === "win32") {
@@ -125,6 +131,8 @@ export interface SessionInfo {
   cwdGuestPath?: string;
   pid: number;
   createdAt: string;
+  /** Owning canvas tile id (from COLLAB_TILE_ID env), if set. */
+  tileId?: string;
 }
 
 // sidecar.ping result

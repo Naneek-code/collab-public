@@ -228,6 +228,9 @@ contextBridge.exposeInMainWorld("shellApi", {
 
   getHomePath: (): string => ipcRenderer.sendSync("get-home-path"),
 
+  agentResumeClear: (tileId: string) =>
+    ipcRenderer.send("agent-resume:clear", tileId),
+
   windowMinimize: () => ipcRenderer.send("window:minimize"),
   windowMaximizeToggle: () => ipcRenderer.send("window:maximize-toggle"),
   windowClose: () => ipcRenderer.send("window:close"),

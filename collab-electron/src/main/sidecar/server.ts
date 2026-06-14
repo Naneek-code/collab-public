@@ -13,6 +13,8 @@ import {
   makeError,
   makeNotification,
   DEFAULT_RING_BUFFER_BYTES,
+  TERMINAL_SCROLLBACK_DIR,
+  scrollbackFilePath,
   sessionSocketPath as buildSessionSocketPath,
   type JsonRpcRequest,
   type SessionCreateParams,
@@ -52,6 +54,11 @@ interface Session {
   reconnectQueue: Array<string | Buffer> | null;
   exited: boolean;
   terminating: boolean;
+  /** Disk-persisted scrollback file, keyed by tile id (survives reboot). */
+  scrollbackPath: string | null;
+  scrollbackTimer: ReturnType<typeof setTimeout> | null;
+  /** Owning canvas tile id, from COLLAB_TILE_ID env. */
+  tileId: string | null;
 }
 
 export class SidecarServer {
@@ -158,6 +165,9 @@ export class SidecarServer {
     if (process.platform !== "win32") {
       fs.mkdirSync(this.opts.sessionSocketDir, { recursive: true });
     }
+    try {
+      fs.mkdirSync(TERMINAL_SCROLLBACK_DIR, { recursive: true });
+    } catch {}
     prepareEndpoint(this.opts.controlSocketPath);
 
     // Write PID file
@@ -180,6 +190,11 @@ export class SidecarServer {
   }
 
   async shutdown(): Promise<void> {
+
+    // Persist latest scrollback for every session before tearing them down.
+    for (const session of this.sessions.values()) {
+      this.flushScrollback(session);
+    }
 
     // Shut down all sessions before closing the control server so tests and
     // non-exit-driven callers do not hang on still-open data servers.
@@ -406,6 +421,22 @@ export class SidecarServer {
     slog("pty.spawn ok", { sessionId, pid: ptyProcess.pid, command });
 
     const ringBuffer = new RingBuffer(this.opts.ringBufferBytes);
+
+    // Disk scrollback is keyed by tile id so it survives a sidecar restart
+    // (e.g. machine reboot). On a fresh session for a tile that already has a
+    // file, seed the ring buffer so the first attached client replays it.
+    const scrollbackKey = env.COLLAB_TILE_ID || sessionId;
+    const scrollbackPath = scrollbackFilePath(scrollbackKey);
+    try {
+      if (fs.existsSync(scrollbackPath)) {
+        let seed = fs.readFileSync(scrollbackPath);
+        if (seed.length > this.opts.ringBufferBytes) {
+          seed = seed.subarray(seed.length - this.opts.ringBufferBytes);
+        }
+        if (seed.length > 0) ringBuffer.write(seed);
+      }
+    } catch {}
+
     const terminateProcess = this.createTerminateProcess(ptyProcess);
     const session = this.withOptional({
       id: sessionId,
@@ -426,6 +457,9 @@ export class SidecarServer {
       reconnectQueue: null,
       exited: false,
       terminating: false,
+      scrollbackPath,
+      scrollbackTimer: null,
+      tileId: env.COLLAB_TILE_ID || null,
     }, {
       cwdGuestPath: params.cwdGuestPath,
     }) as Session;
@@ -433,6 +467,7 @@ export class SidecarServer {
     // Listen for PTY output
     ptyProcess.onData((data: string | Buffer) => {
       ringBuffer.write(this.chunkToBuffer(data));
+      this.scheduleScrollbackFlush(session);
 
       if (session.reconnectQueue) {
         session.reconnectQueue.push(data);
@@ -446,6 +481,7 @@ export class SidecarServer {
 
     ptyProcess.onExit(({ exitCode, signal }) => {
       session.exited = true;
+      this.flushScrollback(session);
       slog("session.exited", {
         sessionId,
         exitCode,
@@ -591,6 +627,7 @@ export class SidecarServer {
         createdAt: s.createdAt,
       }, {
         cwdGuestPath: s.cwdGuestPath,
+        tileId: s.tileId ?? undefined,
       }) as SessionInfo);
     }
     sock.write(makeResponse(id, { sessions }));
@@ -654,6 +691,9 @@ export class SidecarServer {
     const session = this.sessions.get(sessionId);
     if (!session) return;
 
+    // Explicit kill = the tile was closed for good; drop its saved scrollback.
+    this.deleteScrollback(session);
+
     if (session.exited) {
       this.cleanupSession(sessionId);
       return;
@@ -678,12 +718,47 @@ export class SidecarServer {
     const session = this.sessions.get(sessionId);
     if (!session) return;
 
+    if (session.scrollbackTimer) {
+      clearTimeout(session.scrollbackTimer);
+      session.scrollbackTimer = null;
+    }
     if (session.dataClient && !session.dataClient.destroyed) {
       session.dataClient.destroy();
     }
     session.dataServer.close();
     cleanupEndpoint(session.socketPath);
     this.sessions.delete(sessionId);
+  }
+
+  // Throttle-trailing: at most one disk write per interval while output flows,
+  // plus a final write after it goes idle. Captures state for an unclean exit
+  // (reboot) where no onExit fires.
+  private scheduleScrollbackFlush(session: Session): void {
+    if (!session.scrollbackPath || session.scrollbackTimer) return;
+    session.scrollbackTimer = setTimeout(() => {
+      session.scrollbackTimer = null;
+      this.flushScrollback(session);
+    }, 1500);
+  }
+
+  private flushScrollback(session: Session): void {
+    if (!session.scrollbackPath) return;
+    try {
+      const snapshot = session.ringBuffer.snapshot();
+      const tmp = `${session.scrollbackPath}.tmp`;
+      fs.writeFileSync(tmp, snapshot);
+      fs.renameSync(tmp, session.scrollbackPath);
+    } catch {}
+  }
+
+  private deleteScrollback(session: Session): void {
+    if (session.scrollbackTimer) {
+      clearTimeout(session.scrollbackTimer);
+      session.scrollbackTimer = null;
+    }
+    if (!session.scrollbackPath) return;
+    try { fs.unlinkSync(session.scrollbackPath); } catch {}
+    session.scrollbackPath = null;
   }
 
   private sessionSocketPath(sessionId: string): string {

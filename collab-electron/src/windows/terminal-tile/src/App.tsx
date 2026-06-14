@@ -33,14 +33,41 @@ function App() {
     const cwd = params.get("cwd") || undefined;
     const tileId = params.get("tileId") || undefined;
 
+    let cancelled = false;
+
+    // After a reboot the original shell process is gone, but if an AI agent
+    // (Claude Code / Codex) was running here its session was recorded. Replay
+    // the resume command into the fresh shell to restore the agent context.
+    const injectResume = (
+      newSessionId: string,
+      binding: { agentSessionId: string; agentKind: string } | null,
+    ) => {
+      if (!binding?.agentSessionId) return;
+      const cmd =
+        binding.agentKind === "codex"
+          ? `codex resume ${binding.agentSessionId}`
+          : `claude --resume ${binding.agentSessionId}`;
+      // Delay so the shell has printed its prompt before we type.
+      setTimeout(() => {
+        if (!cancelled) window.api.ptyWrite(newSessionId, `${cmd}\r`);
+      }, 1200);
+    };
+
     const createFreshSession = (
       target?: string,
       nextCwd?: string,
+      binding?: {
+        agentSessionId: string;
+        agentKind: string;
+        cwd: string | null;
+      } | null,
     ) => {
       const est = estimateTermSize();
+      const useCwd = binding?.cwd ?? nextCwd ?? cwd;
       window.api
-        .ptyCreate(nextCwd ?? cwd, est.cols, est.rows, target, tileId)
+        .ptyCreate(useCwd, est.cols, est.rows, target, tileId)
         .then((result) => {
+          if (cancelled) return;
           setSessionId(result.sessionId);
           window.api.notifyPtySessionId(
             result.sessionId,
@@ -49,56 +76,54 @@ function App() {
           // opened the shell in the nearest existing parent. Report that
           // corrected cwd so it becomes the default for subsequent
           // terminals and the fallback notice doesn't recur.
-          const requestedCwd = nextCwd ?? cwd;
           if (
-            requestedCwd
+            useCwd
             && result.cwdHostPath
-            && result.cwdHostPath !== requestedCwd
+            && result.cwdHostPath !== useCwd
           ) {
             window.api.notifyCwdChanged(
               result.sessionId,
               result.cwdHostPath,
             );
           }
+          if (binding) injectResume(result.sessionId, binding);
         })
         .catch(() => {
-          setExited(true);
+          if (!cancelled) setExited(true);
         });
     };
 
-    if (isRestored && existingSessionId) {
-      setRestored(true);
-      const { cols, rows } = estimateTermSize();
+    const init = async () => {
+      const binding = tileId
+        ? await window.api.agentResumeGet(tileId).catch(() => null)
+        : null;
 
-      window.api
-        .ptyDiscover()
-        .then((sessions) => {
+      if (isRestored && existingSessionId) {
+        setRestored(true);
+        const { cols, rows } = estimateTermSize();
+        try {
+          const sessions = await window.api.ptyDiscover();
           const found = sessions.some(
             (session) => session.sessionId === existingSessionId,
           );
-          if (!found) {
-            throw new Error("Missing restored session");
-          }
-          return window.api.ptyReconnect(
+          if (!found) throw new Error("Missing restored session");
+          const result = await window.api.ptyReconnect(
             existingSessionId,
             cols,
             rows,
           );
-        })
-        .then((result) => {
-          if (result.scrollback) {
-            setScrollbackData(result.scrollback);
-          }
-          if (result.mode) {
-            setSessionMode(result.mode);
-          }
+          if (cancelled) return;
+          if (result.scrollback) setScrollbackData(result.scrollback);
+          if (result.mode) setSessionMode(result.mode);
           setSessionId(existingSessionId);
-        })
-        .catch(async () => {
+          // Reconnect succeeded — the agent (if any) is still alive, so we
+          // must NOT re-inject a resume command.
+        } catch {
+          if (cancelled) return;
           setRestored(false);
-          // Recover the original working directory from session
-          // metadata so the fallback session opens in the right place.
-          let fallbackCwd = cwd;
+          // Recover the original working directory so the fallback session
+          // opens in the right place (also required for agent resume).
+          let fallbackCwd = binding?.cwd ?? cwd;
           let fallbackTarget: string | undefined;
           if (existingSessionId) {
             try {
@@ -111,18 +136,23 @@ function App() {
               // Metadata unavailable — fall through to default
             }
           }
-          createFreshSession(fallbackTarget, fallbackCwd);
-        });
+          createFreshSession(fallbackTarget, fallbackCwd, binding);
+        }
+        return;
+      }
 
-      return;
-    }
+      if (existingSessionId) {
+        setSessionId(existingSessionId);
+        return;
+      }
 
-    if (existingSessionId) {
-      setSessionId(existingSessionId);
-      return;
-    }
+      createFreshSession(undefined, undefined, binding);
+    };
 
-    createFreshSession();
+    void init();
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   useEffect(() => {
