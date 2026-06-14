@@ -23,6 +23,10 @@
 
 	--toolbar-height: 38px;
 	--nav-inset: 12px;
+
+	--island-gap: 6px;
+	--island-radius: 8px;
+	--island-shadow: 0 1px 2px rgba(0, 0, 0, 0.06), 0 4px 12px rgba(0, 0, 0, 0.05);
 }
 
 .dark {
@@ -37,6 +41,8 @@
 	--muted: rgb(132, 132, 132);
 	--edge-dot: rgb(72, 210, 130);
 	--edge-dot-hover: rgb(90, 235, 150);
+
+	--island-shadow: 0 1px 2px rgba(0, 0, 0, 0.4), 0 4px 14px rgba(0, 0, 0, 0.35);
 }
 
 * {
@@ -168,6 +174,12 @@ body.platform-win {
 	display: flex;
 	flex: 1;
 	min-height: 0;
+	gap: var(--island-gap);
+	padding: calc(var(--toolbar-height) + var(--island-gap)) var(--island-gap) var(--island-gap);
+}
+
+body.titlebar-collapsed #panels {
+	padding-top: var(--island-gap);
 }
 
 #panel-nav {
@@ -177,7 +189,9 @@ body.platform-win {
 	flex: 1 1 0;
 	min-width: calc(var(--panel-nav-min) * 1px);
 	max-width: calc(var(--panel-nav-max) * 1px);
-	border-right: 1px solid var(--border);
+	border: 1px solid var(--border);
+	border-radius: var(--island-radius);
+	box-shadow: var(--island-shadow);
 	overflow: hidden;
 	background: rgba(var(--bg-rgb), calc(1 - (1 - var(--canvas-opacity)) / 2));
 }
@@ -216,6 +230,9 @@ body.platform-win {
 	min-width: 200px;
 	overflow: hidden;
 	position: relative;
+	border: 1px solid var(--border);
+	border-radius: var(--island-radius);
+	box-shadow: var(--island-shadow);
 	background: rgba(var(--canvas-bg-rgb), var(--canvas-opacity));
 	outline: none;
 }
@@ -229,20 +246,6 @@ body.platform-win {
 	box-shadow: none;
 }
 
-#panel-viewer.nav-open::after {
-	box-shadow: inset 8px 0 12px -6px rgba(0, 0, 0, 0.15);
-}
-
-#panel-viewer.agent-open::after {
-	box-shadow: inset -8px 0 12px -6px rgba(0, 0, 0, 0.15);
-}
-
-#panel-viewer.nav-open.agent-open::after {
-	box-shadow:
-		inset 8px 0 12px -6px rgba(0, 0, 0, 0.15),
-		inset -8px 0 12px -6px rgba(0, 0, 0, 0.15);
-}
-
 .platform-win #panel-viewer {
 	background: rgba(var(--canvas-bg-rgb), var(--canvas-opacity));
 }
@@ -252,7 +255,9 @@ body.platform-win {
 	flex-direction: column;
 	overflow: hidden;
 	min-height: 0;
-	border-left: 1px solid var(--border);
+	border: 1px solid var(--border);
+	border-radius: var(--island-radius);
+	box-shadow: var(--island-shadow);
 	background: rgba(var(--bg-rgb), calc(1 - (1 - var(--canvas-opacity)) / 2));
 }
 
@@ -292,7 +297,6 @@ body.platform-win {
 	gap: 8px;
 	flex-shrink: 0;
 	padding: 8px var(--nav-inset);
-	padding-top: calc(var(--toolbar-height) + 4px);
 }
 
 #sidebar-mode-control {
@@ -408,6 +412,7 @@ body.platform-win {
 
 .resize-handle {
 	width: 0;
+	margin: 0 calc(var(--island-gap) / -2);
 	position: relative;
 	cursor: col-resize;
 	z-index: 10;
@@ -419,8 +424,8 @@ body.platform-win {
 	position: absolute;
 	top: 0;
 	bottom: 0;
-	left: -4px;
-	width: 8px;
+	left: calc(var(--island-gap) / -2);
+	width: var(--island-gap);
 }
 
 /* ── Settings ── */
