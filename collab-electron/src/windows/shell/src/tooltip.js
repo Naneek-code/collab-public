@@ -60,12 +60,14 @@ function hide() {
 }
 
 document.addEventListener("mouseenter", (e) => {
+  if (!(e.target instanceof Element)) return;
   const target = e.target.closest("[data-tooltip]");
   if (!target) return;
   show(target);
 }, true);
 
 document.addEventListener("mouseleave", (e) => {
+  if (!(e.target instanceof Element)) return;
   const leaving = e.target.closest("[data-tooltip]");
   if (!leaving) return;
   const entering = e.relatedTarget?.closest?.("[data-tooltip]");
