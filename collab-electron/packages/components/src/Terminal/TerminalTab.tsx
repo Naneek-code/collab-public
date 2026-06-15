@@ -5,6 +5,7 @@ import { WebglAddon } from "@xterm/addon-webgl";
 import { Unicode11Addon } from "@xterm/addon-unicode11";
 import { getTheme } from "./theme";
 import { ClaudePrompt } from "./ClaudePrompt";
+import { loadHackFont } from "./fontutil";
 import "@xterm/xterm/css/xterm.css";
 import "./TerminalTab.css";
 
@@ -38,16 +39,23 @@ function TerminalTab({
 		const container = containerRef.current;
 		if (!container) return;
 
+		let cancelled = false;
+		let disposeTerminal: (() => void) | undefined;
+
 		const prefersDark = window.matchMedia(
 			"(prefers-color-scheme: dark)",
 		).matches;
 
+		loadHackFont().then(() => {
+		if (cancelled) return;
+
 		const term = new Terminal({
 			theme: getTheme(),
-			fontFamily: 'Menlo, Monaco, "Courier New", monospace',
+			fontFamily: "Hack, monospace",
 			fontSize: 12,
-			fontWeight: "300",
-			fontWeightBold: "500",
+			fontWeight: "normal",
+			fontWeightBold: "bold",
+			drawBoldTextInBrightColors: false,
 			cursorBlink: true,
 			scrollback: 200000,
 			allowProposedApi: true,
@@ -375,7 +383,7 @@ function TerminalTab({
 		};
 		mediaQuery.addEventListener("change", onThemeChange);
 
-		return () => {
+		disposeTerminal = () => {
 			if (flushTimer !== undefined) {
 				clearTimeout(flushTimer);
 				flushData();
@@ -393,6 +401,12 @@ function TerminalTab({
 			setTermInstance(null);
 			term.dispose();
 			fitRef.current = null;
+		};
+		}); // end loadHackFont().then()
+
+		return () => {
+			cancelled = true;
+			disposeTerminal?.();
 		};
 	}, [sessionId]);
 

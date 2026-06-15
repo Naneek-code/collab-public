@@ -1,3 +1,31 @@
+@font-face {
+	font-family: "Hack";
+	src: url("/fonts/hacknerdmono-regular.ttf") format("truetype");
+	font-weight: 400;
+	font-style: normal;
+}
+
+@font-face {
+	font-family: "Hack";
+	src: url("/fonts/hacknerdmono-bold.ttf") format("truetype");
+	font-weight: 700;
+	font-style: normal;
+}
+
+@font-face {
+	font-family: "Hack";
+	src: url("/fonts/hacknerdmono-italic.ttf") format("truetype");
+	font-weight: 400;
+	font-style: italic;
+}
+
+@font-face {
+	font-family: "Hack";
+	src: url("/fonts/hacknerdmono-bolditalic.ttf") format("truetype");
+	font-weight: 700;
+	font-style: italic;
+}
+
 /* ============================================================================
    TERMINAL TAB
    ============================================================================ */
