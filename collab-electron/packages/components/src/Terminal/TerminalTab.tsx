@@ -231,7 +231,13 @@ function TerminalTab({
 			try {
 				const url = new URL(data);
 				if (url.protocol === "file:") {
-					const cwd = decodeURIComponent(url.pathname);
+					let cwd = decodeURIComponent(url.pathname);
+					// Windows drive paths arrive as "/C:/Users/x"; strip the
+					// leading slash and restore native separators so the value
+					// matches the host-format cwd used elsewhere.
+					if (/^\/[A-Za-z]:/.test(cwd)) {
+						cwd = cwd.slice(1).replace(/\//g, "\\");
+					}
 					if (cwd) window.api.notifyCwdChanged(sessionId, cwd);
 				}
 			} catch {

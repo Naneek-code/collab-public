@@ -160,6 +160,60 @@ contextBridge.exposeInMainWorld("shellApi", {
   canvasSaveState: (state: unknown) =>
     ipcRenderer.invoke("canvas:save-state", state),
 
+  workspaceMgrList: (): Promise<{
+    activeId: string | null;
+    workspaces: Array<{
+      id: string;
+      name: string;
+      color: string;
+      createdAt: number;
+      lastFocusedAt: number;
+    }>;
+  }> => ipcRenderer.invoke("workspace-mgr:list"),
+  workspaceMgrSetActive: (id: string) =>
+    ipcRenderer.invoke("workspace-mgr:set-active", id),
+  workspaceMgrCreate: (name?: string) =>
+    ipcRenderer.invoke("workspace-mgr:create", name),
+  workspaceMgrRename: (id: string, name: string) =>
+    ipcRenderer.invoke("workspace-mgr:rename", id, name),
+  workspaceMgrSetColor: (id: string, color: string) =>
+    ipcRenderer.invoke("workspace-mgr:set-color", id, color),
+  workspaceMgrDelete: (
+    id: string,
+  ): Promise<{ activeId: string | null; deleted: boolean }> =>
+    ipcRenderer.invoke("workspace-mgr:delete", id),
+  workspaceMgrReorder: (order: string[]) =>
+    ipcRenderer.invoke("workspace-mgr:reorder", order),
+  workspaceMgrListTabStates: (
+    id: string,
+  ): Promise<Array<{ tiles: Array<Record<string, unknown>> }>> =>
+    ipcRenderer.invoke("workspace-mgr:list-tab-states", id),
+
+  tabGet: (
+    workspaceId: string,
+  ): Promise<{
+    activeTabId: string | null;
+    tabs: Array<{ id: string; name: string }>;
+  }> => ipcRenderer.invoke("tab:get", workspaceId),
+  tabLoadState: (workspaceId: string, tabId: string) =>
+    ipcRenderer.invoke("tab:load-state", workspaceId, tabId),
+  tabSaveState: (workspaceId: string, tabId: string, state: unknown) =>
+    ipcRenderer.invoke("tab:save-state", workspaceId, tabId, state),
+  tabSetActive: (workspaceId: string, tabId: string) =>
+    ipcRenderer.invoke("tab:set-active", workspaceId, tabId),
+  tabCreate: (
+    workspaceId: string,
+    name?: string,
+  ): Promise<{ id: string; name: string } | null> =>
+    ipcRenderer.invoke("tab:create", workspaceId, name),
+  tabRename: (workspaceId: string, tabId: string, name: string) =>
+    ipcRenderer.invoke("tab:rename", workspaceId, tabId, name),
+  tabDelete: (
+    workspaceId: string,
+    tabId: string,
+  ): Promise<{ activeTabId: string | null; deleted: boolean }> =>
+    ipcRenderer.invoke("tab:delete", workspaceId, tabId),
+
   getDragPaths: () => ipcRenderer.invoke("drag:get-paths"),
   getPathForFile: (file: File): string => webUtils.getPathForFile(file),
 
@@ -188,6 +242,13 @@ contextBridge.exposeInMainWorld("shellApi", {
     const handler = (_event: unknown, deltaY: number) => cb(deltaY);
     ipcRenderer.on("canvas:pinch", handler);
     return () => ipcRenderer.removeListener("canvas:pinch", handler);
+  },
+
+  onCanvasTilePanStart: (cb: () => void) => {
+    const handler = () => cb();
+    ipcRenderer.on("canvas:tile-pan-start", handler);
+    return () =>
+      ipcRenderer.removeListener("canvas:tile-pan-start", handler);
   },
 
   onCanvasRpcRequest: (

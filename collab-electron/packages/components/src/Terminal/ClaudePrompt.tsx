@@ -666,7 +666,7 @@ const ClaudePrompt = React.memo(({ sessionId, term }: ClaudePromptProps) => {
       const hasStatusMarker = /\[[^\]]+\]/.test(statusText);
       const hasFocusMarker = /\bfocus\b/i.test(statusText);
       const menuMode = rows.some((line) =>
-        /\b(resume session|select a|select an|switch to|choose)\b|\(\s*\d+\s+of\s+\d+\s*\)/i.test(
+        /\b(resume session|select a|select an|switch to|choose)\b|\(\s*\d+\s+of\s+\d+\s*\)|to show all projects|only show current branch/i.test(
           line,
         ),
       );

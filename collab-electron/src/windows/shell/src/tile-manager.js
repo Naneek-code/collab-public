@@ -671,6 +671,24 @@ export function createTileManager({
 		saveCanvasImmediate();
 	}
 
+	/**
+	 * Tears down all tile DOM/webviews for a workspace switch WITHOUT killing
+	 * pty sessions or recording undo state. Terminal sessions keep running in
+	 * the sidecar so the workspace reconnects to them by ptySessionId when it
+	 * is restored. Caller is responsible for persisting beforehand.
+	 */
+	function detachAllTiles() {
+		clearTimeout(saveTimer);
+		for (const [id, dom] of tileDOMs) {
+			dom.container.remove();
+			deselectTile(id);
+		}
+		tileDOMs.clear();
+		clearSelection();
+		tiles.length = 0;
+		focusedTileId = null;
+	}
+
 	// -- Canvas state restore --
 
 	function restoreCanvasState(savedTiles) {
@@ -831,6 +849,7 @@ export function createTileManager({
 		createFileTile,
 		createGraphTile,
 		clearCanvas,
+		detachAllTiles,
 		getCanvasStateForSave,
 		restoreCanvasState,
 		reopenLastClosedTile,

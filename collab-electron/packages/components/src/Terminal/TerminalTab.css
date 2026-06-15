@@ -48,6 +48,12 @@
 }
 
 .terminal-tab .xterm {
+	transform: translateX(4px);
+}
+
+/* Nudge the terminal up only while Claude Code is active in the tile, so the
+   floating prompt sits flush; plain shells keep their natural top spacing. */
+.terminal-tab-host:has(.claude-prompt) .xterm {
 	transform: translate(4px, -10px);
 }
 

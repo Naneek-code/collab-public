@@ -703,3 +703,20 @@ window.addEventListener("wheel", (e) => {
     ipcRenderer.send("canvas:forward-pinch", e.deltaY);
   }
 }, { passive: false });
+
+// Forward middle-button press from canvas tile webviews so the canvas can pan
+// even when the gesture starts over an interactive (focused) webview, whose
+// out-of-process surface would otherwise swallow the event from the host.
+// Scoped to tile renderers; fixed shell panels keep native middle-click.
+const IS_CANVAS_TILE = /\/(terminal-tile|graph-tile)\//.test(
+  location.pathname,
+);
+if (IS_CANVAS_TILE) {
+  window.addEventListener("mousedown", (e) => {
+    if (e.button === 1) {
+      e.preventDefault();
+      e.stopPropagation();
+      ipcRenderer.send("canvas:tile-pan-start");
+    }
+  }, true);
+}

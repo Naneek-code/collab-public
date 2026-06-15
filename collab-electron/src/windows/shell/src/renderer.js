@@ -14,6 +14,7 @@ import { createPanel } from "./panel-manager.js";
 import { createWorkspaceManager } from "./workspace-manager.js";
 import { createCanvasRpc } from "./canvas-rpc.js";
 import { createTileManager } from "./tile-manager.js";
+import { createWorkspaceBar } from "./workspace-bar.js";
 import { updateTileTitle, getTileLabel } from "./tile-renderer.js";
 
 const CANVAS_DBLCLICK_SUPPRESS_MS = 500;
@@ -188,10 +189,6 @@ async function init() {
 
 	let lastTerminalCwd = prefLastTerminalCwd || null;
 	let lastTerminalSize = prefLastTerminalSize || null;
-
-	function getTerminalCwd() {
-		return lastTerminalCwd || workspaceData.workspaces[0];
-	}
 
 	function setLastTerminalCwd(cwd) {
 		lastTerminalCwd = cwd;
@@ -948,10 +945,9 @@ async function init() {
 		const cx = (screenX - viewportState.panX) / viewportState.zoom;
 		const cy = (screenY - viewportState.panY) / viewportState.zoom;
 
-		const cwd = getTerminalCwd();
 		const size = getTerminalSize();
 		const tile = tileManager.createCanvasTile(
-			"term", cx, cy, { cwd, ...size },
+			"term", cx, cy, { ...size },
 		);
 		tileManager.spawnTerminalWebview(tile, true);
 		tileManager.saveCanvasImmediate();
@@ -979,10 +975,9 @@ async function init() {
 		]);
 
 		if (selected === "new-terminal") {
-			const cwd = getTerminalCwd();
 			const size = getTerminalSize();
 			const tile = tileManager.createCanvasTile(
-				"term", cx, cy, { cwd, ...size },
+				"term", cx, cy, { ...size },
 			);
 			tileManager.spawnTerminalWebview(tile, true);
 			tileManager.saveCanvasImmediate();
@@ -1121,19 +1116,19 @@ async function init() {
 		}
 	});
 
-	canvasEl.addEventListener("mousedown", (e) => {
-		const shouldPan =
-			e.button === 1 || (e.button === 0 && spaceHeld);
-		if (!shouldPan) return;
+	// Start a canvas pan. When anchor coords are null the gesture was started
+	// from inside a tile webview (middle-button forwarded over IPC): the host
+	// never saw the press, so the start point is captured on the first move.
+	function beginPan(anchorX, anchorY) {
+		if (isPanning) return;
 
-		e.preventDefault();
 		suppressCanvasDblClickUntil =
 			Date.now() + CANVAS_DBLCLICK_SUPPRESS_MS;
 		isPanning = true;
 		canvasEl.classList.add("panning");
 
-		const startMX = e.clientX;
-		const startMY = e.clientY;
+		let startMX = anchorX;
+		let startMY = anchorY;
 		const startPanX = viewportState.panX;
 		const startPanY = viewportState.panY;
 
@@ -1142,6 +1137,11 @@ async function init() {
 		}
 
 		function onMove(ev) {
+			if (startMX === null) {
+				startMX = ev.clientX;
+				startMY = ev.clientY;
+				return;
+			}
 			viewportState.panX = startPanX + (ev.clientX - startMX);
 			viewportState.panY = startPanY + (ev.clientY - startMY);
 			viewport.updateCanvas();
@@ -1162,6 +1162,19 @@ async function init() {
 
 		document.addEventListener("mousemove", onMove);
 		document.addEventListener("mouseup", onUp);
+	}
+
+	canvasEl.addEventListener("mousedown", (e) => {
+		const shouldPan =
+			e.button === 1 || (e.button === 0 && spaceHeld);
+		if (!shouldPan) return;
+
+		e.preventDefault();
+		beginPan(e.clientX, e.clientY);
+	});
+
+	window.shellApi.onCanvasTilePanStart(() => {
+		beginPan(null, null);
 	});
 
 	// -- Shortcuts --
@@ -1200,9 +1213,8 @@ async function init() {
 			const cy =
 				(rect.height / 2 - viewportState.panY) /
 				viewportState.zoom - size.height / 2;
-			const cwd = getTerminalCwd();
 			const tile = tileManager.createCanvasTile(
-				"term", cx, cy, { cwd, ...size },
+				"term", cx, cy, { ...size },
 			);
 			tileManager.spawnTerminalWebview(tile, true);
 			tileManager.saveCanvasImmediate();
@@ -1715,11 +1727,11 @@ async function init() {
 		});
 	}
 
-	// -- Restore canvas state --
+	// -- Canvas state apply (startup restore and workspace switching) --
 
-	const savedState = await window.shellApi.canvasLoadState();
-	if (savedState) {
-		const { centerX, centerY, zoom } = savedState.viewport;
+	async function applyCanvasState(state) {
+		const viewportData = state?.viewport ?? {};
+		const { centerX, centerY, zoom } = viewportData;
 		const w = canvasEl.clientWidth;
 		const h = canvasEl.clientHeight;
 		viewportState.zoom = zoom ?? 1;
@@ -1730,7 +1742,7 @@ async function init() {
 			? h / 2 - centerY * viewportState.zoom
 			: 0;
 		viewport.updateCanvas();
-		tileManager.restoreCanvasState(savedState.tiles);
+		tileManager.restoreCanvasState(state?.tiles ?? []);
 		viewport.redrawGrid();
 		minimap.update();
 
@@ -1747,9 +1759,144 @@ async function init() {
 				);
 				syncTerminalTileMeta(tile, session?.meta);
 			}
-			tileManager.saveCanvasDebounced();
+		}
+		syncTileList();
+	}
+
+	// -- Restore canvas state (active workspace's active tab) --
+
+	let currentWorkspaceId = null;
+	let currentTabId = null;
+
+	const savedState = await window.shellApi.canvasLoadState();
+	if (savedState) {
+		await applyCanvasState(savedState);
+		tileManager.saveCanvasDebounced();
+	}
+
+	{
+		const list = await window.shellApi.workspaceMgrList();
+		currentWorkspaceId = list.activeId;
+		if (currentWorkspaceId) {
+			const t = await window.shellApi.tabGet(currentWorkspaceId);
+			currentTabId = t.activeTabId;
 		}
 	}
+
+	// -- Workspace / tab orchestration --
+
+	async function saveCurrentCanvas() {
+		await window.shellApi.canvasSaveState(
+			toCenterPointState(tileManager.getCanvasStateForSave()),
+		);
+	}
+
+	function reapPtySessions(state) {
+		for (const tile of state?.tiles ?? []) {
+			if (tile.type === "term" && tile.ptySessionId) {
+				window.shellApi.ptyKillSession(tile.ptySessionId);
+			}
+		}
+	}
+
+	// Applies a tab's canvas. Caller MUST have already detached the previous
+	// canvas and set the new active target, so any restore-triggered autosave
+	// writes to the correct tab.
+	async function applyTab(workspaceId, tabId) {
+		const state = tabId
+			? await window.shellApi.tabLoadState(workspaceId, tabId)
+			: null;
+		await applyCanvasState(state);
+		currentWorkspaceId = workspaceId;
+		currentTabId = tabId;
+	}
+
+	async function switchTab(tabId) {
+		if (tabId === currentTabId) return;
+		await saveCurrentCanvas();
+		// Detach BEFORE re-pointing the active tab: detach cancels any pending
+		// debounced save so the old canvas can't be written into the new tab.
+		tileManager.detachAllTiles();
+		await window.shellApi.tabSetActive(currentWorkspaceId, tabId);
+		await applyTab(currentWorkspaceId, tabId);
+	}
+
+	async function newTab() {
+		await saveCurrentCanvas();
+		const tab = await window.shellApi.tabCreate(currentWorkspaceId);
+		if (!tab) return;
+		tileManager.detachAllTiles();
+		await window.shellApi.tabSetActive(currentWorkspaceId, tab.id);
+		await applyTab(currentWorkspaceId, tab.id);
+	}
+
+	async function closeTab(tabId, isActive) {
+		const victim = isActive
+			? tileManager.getCanvasStateForSave()
+			: await window.shellApi.tabLoadState(currentWorkspaceId, tabId);
+		if (isActive) tileManager.detachAllTiles();
+		const res = await window.shellApi.tabDelete(currentWorkspaceId, tabId);
+		if (!res.deleted) {
+			// Deletion refused (last tab) — re-apply the live canvas.
+			if (isActive) await applyTab(currentWorkspaceId, currentTabId);
+			return;
+		}
+		reapPtySessions(victim);
+		if (isActive && res.activeTabId) {
+			await window.shellApi.tabSetActive(
+				currentWorkspaceId, res.activeTabId,
+			);
+			await applyTab(currentWorkspaceId, res.activeTabId);
+		}
+	}
+
+	async function switchWorkspace(workspaceId) {
+		if (workspaceId === currentWorkspaceId) return;
+		await saveCurrentCanvas();
+		tileManager.detachAllTiles();
+		await window.shellApi.workspaceMgrSetActive(workspaceId);
+		const t = await window.shellApi.tabGet(workspaceId);
+		const tabId = t.activeTabId ?? t.tabs[0]?.id ?? null;
+		await applyTab(workspaceId, tabId);
+	}
+
+	async function newWorkspace() {
+		const meta = await window.shellApi.workspaceMgrCreate();
+		await switchWorkspace(meta.id);
+	}
+
+	async function deleteWorkspace(workspaceId, isActive) {
+		// Reap pty sessions across every tab of the victim workspace before it
+		// is removed, so terminals don't leak as orphaned sidecar processes.
+		const states =
+			await window.shellApi.workspaceMgrListTabStates(workspaceId);
+		if (isActive) tileManager.detachAllTiles();
+		const res = await window.shellApi.workspaceMgrDelete(workspaceId);
+		if (!res.deleted) {
+			if (isActive) await applyTab(currentWorkspaceId, currentTabId);
+			return;
+		}
+		for (const state of states) reapPtySessions(state);
+		if (isActive && res.activeId) {
+			await window.shellApi.workspaceMgrSetActive(res.activeId);
+			const t = await window.shellApi.tabGet(res.activeId);
+			const tabId = t.activeTabId ?? t.tabs[0]?.id ?? null;
+			await applyTab(res.activeId, tabId);
+		}
+	}
+
+	const workspaceBar = createWorkspaceBar({
+		wsButton: document.getElementById("workspace-switch-btn"),
+		popover: document.getElementById("workspace-popover"),
+		tabStrip: document.getElementById("tab-strip"),
+		onSwitchWorkspace: switchWorkspace,
+		onSwitchTab: switchTab,
+		onNewTab: newTab,
+		onCloseTab: closeTab,
+		onNewWorkspace: newWorkspace,
+		onDeleteWorkspace: deleteWorkspace,
+	});
+	await workspaceBar.refresh();
 
 	// -- Initialize workspaces --
 

@@ -476,7 +476,10 @@ function osc7ShellHook(shell: string): string | null {
       "clear",
     ].join(" ");
   }
-  // fish emits OSC 7 by default — no hook needed
+  // PowerShell has no reliable injected hook: prompt tools (oh-my-posh) load
+  // late in $PROFILE and overwrite `prompt`, and any typed-in command splatters
+  // visibly. Users add the wrapper to $PROFILE instead — see
+  // docs/terminal-osc7.md. fish emits OSC 7 by default — no hook needed.
   return null;
 }
 
@@ -607,6 +610,7 @@ export async function createSession(
   await ensureSidecar();
   const client = getSidecarClient();
   const sidecarEnv = utf8Env();
+  sidecarEnv.COLLAB_TERMINAL = "1";
   if (tileId) sidecarEnv.COLLAB_TILE_ID = tileId;
 
   let zshIntegrated = false;
