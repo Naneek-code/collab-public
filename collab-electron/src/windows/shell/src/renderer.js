@@ -1207,6 +1207,12 @@ async function init() {
 				noteSurfaceFocus("canvas");
 				minimap.update();
 			}
+		} else if (action === "reopen-tile") {
+			const reopened = tileManager.reopenLastClosedTile();
+			if (reopened) {
+				edgeIndicators.panToTile(reopened);
+				minimap.update();
+			}
 		} else if (
 			action === "focus-tile-right" || action === "focus-tile-left" ||
 			action === "focus-tile-up" || action === "focus-tile-down"

@@ -198,6 +198,7 @@ const TOGGLE_SHORTCUTS: Record<string, ShortcutEntry[]> = {
   KeyK: [{ modifier: cmdOrCtrl, action: "focus-file-search" }],
   KeyN: [{ modifier: cmdOrCtrl, action: "new-tile" }],
   KeyW: [{ modifier: cmdOrCtrl, action: "close-tile" }],
+  KeyT: [{ modifier: shiftCmdOrCtrl, action: "reopen-tile" }],
   ArrowRight: [{ modifier: altOnly, action: "focus-tile-right" }],
   ArrowLeft: [{ modifier: altOnly, action: "focus-tile-left" }],
   ArrowUp: [{ modifier: altOnly, action: "focus-tile-up" }],
@@ -211,6 +212,7 @@ const TOGGLE_SHORTCUT_KEYS: Record<string, ShortcutEntry[]> = {
   b: TOGGLE_SHORTCUTS.KeyB!,
   n: TOGGLE_SHORTCUTS.KeyN!,
   w: TOGGLE_SHORTCUTS.KeyW!,
+  t: TOGGLE_SHORTCUTS.KeyT!,
 };
 
 function normalizeShortcutKey(key: string | undefined): string | null {
@@ -352,6 +354,12 @@ function buildAppMenu(): void {
           accelerator: "CommandOrControl+W",
           registerAccelerator: false,
           click: () => sendShortcut("close-tile"),
+        },
+        {
+          label: "Reopen Closed Tile",
+          accelerator: "CommandOrControl+Shift+T",
+          registerAccelerator: false,
+          click: () => sendShortcut("reopen-tile"),
         },
         { type: "separator" },
         {

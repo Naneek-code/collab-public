@@ -34,6 +34,7 @@ export function createTileManager({
 	const tileDOMs = new Map();
 	let saveTimer = null;
 	let focusedTileId = null;
+	const closedTileStack = [];
 
 	// Viewport read-only accessor for tile-interactions
 	const viewport = {
@@ -581,6 +582,7 @@ export function createTileManager({
 		deselectTile(id);
 		const tile = getTile(id);
 		if (tile) {
+			closedTileStack.push({ ...tile });
 			window.shellApi.trackEvent(
 				"tile_closed", { type: tile.type },
 			);
@@ -692,6 +694,7 @@ export function createTileManager({
 						height: saved.height,
 						zIndex: saved.zIndex,
 						ptySessionId: saved.ptySessionId,
+						cwd: saved.cwd,
 						userTitle: saved.userTitle,
 						autoTitle: saved.autoTitle,
 					},
@@ -731,6 +734,20 @@ export function createTileManager({
 				);
 			}
 		}
+	}
+
+	function reopenLastClosedTile() {
+		const snap = closedTileStack.pop();
+		if (!snap) return null;
+		// Terminal pty sessions are killed on close; respawn fresh in the
+		// original cwd rather than restoring a dead session.
+		if (snap.type === "term") delete snap.ptySessionId;
+		delete snap.id;
+		restoreCanvasState([snap]);
+		const reopened = tiles[tiles.length - 1];
+		if (reopened) focusCanvasTile(reopened.id);
+		saveCanvasImmediate();
+		return reopened;
 	}
 
 	// -- Tile updates for external events --
@@ -816,6 +833,7 @@ export function createTileManager({
 		clearCanvas,
 		getCanvasStateForSave,
 		restoreCanvasState,
+		reopenLastClosedTile,
 		getTileDOMs: () => tileDOMs,
 		getFocusedTileId: () => focusedTileId,
 		setFocusedTileId: (id) => { focusedTileId = id; },
