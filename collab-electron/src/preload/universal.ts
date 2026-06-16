@@ -45,6 +45,15 @@ type AgentEventCb = (event: {
 }) => void;
 
 const agentEventListeners = new Set<AgentEventCb>();
+
+type ClaudeStateCb = (state: {
+  ptySessionId: string;
+  model?: string;
+  mode?: string;
+  permissionMode?: string;
+  status?: string;
+}) => void;
+const claudeStateListeners = new Map<string, Set<ClaudeStateCb>>();
 type FocusTabCb = (ptySessionId: string) => void;
 const focusTabListeners = new Set<FocusTabCb>();
 type ShellBlurCb = () => void;
@@ -101,6 +110,13 @@ ipcRenderer.on("cd-to", (_event, path: string) => {
 
 ipcRenderer.on("run-in-terminal", (_event, command: string) => {
   for (const cb of runInTerminalListeners) cb(command);
+});
+
+ipcRenderer.on("claude:state", (_event, data) => {
+  if (data?.ptySessionId) {
+    for (const cb of claudeStateListeners.get(data.ptySessionId) ?? [])
+      cb(data);
+  }
 });
 
 ipcRenderer.on("agent:session-started", (_event, data) => {
@@ -287,6 +303,14 @@ contextBridge.exposeInMainWorld("api", {
     ipcRenderer.invoke("pty:read-meta", sessionId),
   agentResumeGet: (tileId: string) =>
     ipcRenderer.invoke("agent-resume:get", tileId),
+  getClaudeState: (ptySessionId: string) =>
+    ipcRenderer.invoke("claude:get-state", ptySessionId),
+  onClaudeState: (ptySessionId: string, cb: ClaudeStateCb) => {
+    getOrCreateListenerSet(claudeStateListeners, ptySessionId).add(cb);
+  },
+  offClaudeState: (ptySessionId: string, cb: ClaudeStateCb) => {
+    removeListener(claudeStateListeners, ptySessionId, cb);
+  },
   onPtyData: (sessionId: string, cb: PtyDataCallback) => {
     getOrCreateListenerSet(dataListeners, sessionId).add(cb);
     const buffered = bufferedPtyData.get(sessionId);

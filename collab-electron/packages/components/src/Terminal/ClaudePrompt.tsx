@@ -415,6 +415,7 @@ function looksLikeClaude(text: string): boolean {
     return true;
   }
   if (/\[[^\]\n]*\b(opus|sonnet|haiku)\b[^\]\n]*\]/i.test(text)) return true;
+  if (/press ctrl-?c again/i.test(text)) return true;
   return false;
 }
 
@@ -435,6 +436,12 @@ const ClaudePrompt = React.memo(({ sessionId, term }: ClaudePromptProps) => {
   const [manualHide, setManualHide] = React.useState(false);
   const [isPasting, setIsPasting] = React.useState(false);
   const [isSubmitting, setIsSubmitting] = React.useState(false);
+  const [structuredState, setStructuredState] = React.useState<{
+    model?: string;
+    mode?: string;
+    permissionMode?: string;
+    status?: string;
+  } | null>(null);
 
   const editorRef = React.useRef<HTMLDivElement>(null);
   const historyIndexRef = React.useRef<number | null>(null);
@@ -523,6 +530,31 @@ const ClaudePrompt = React.memo(({ sessionId, term }: ClaudePromptProps) => {
     const id = window.setInterval(scan, SCAN_MS);
     return () => clearInterval(id);
   }, [term]);
+
+  React.useEffect(() => {
+    const cb = (state: {
+      ptySessionId: string;
+      model?: string;
+      mode?: string;
+      permissionMode?: string;
+      status?: string;
+    }) => {
+      setStructuredState({
+        model: state.model,
+        mode: state.mode,
+        permissionMode: state.permissionMode,
+        status: state.status,
+      });
+    };
+    window.api.onClaudeState(sessionId, cb);
+    window.api
+      .getClaudeState(sessionId)
+      .then((s: typeof structuredState) => {
+        if (s) setStructuredState(s);
+      })
+      .catch(() => {});
+    return () => window.api.offClaudeState(sessionId, cb);
+  }, [sessionId]);
 
   const prevHiddenRef = React.useRef(false);
   React.useEffect(() => {
@@ -670,8 +702,12 @@ const ClaudePrompt = React.memo(({ sessionId, term }: ClaudePromptProps) => {
           line,
         ),
       );
+      const exitBanner = rows.some((line) =>
+        /press ctrl-?c again/i.test(line),
+      );
       const questionMode =
-        menuMode || (!hasInputBox && !hasStatusMarker && !hasFocusMarker);
+        menuMode ||
+        (!exitBanner && !hasInputBox && !hasStatusMarker && !hasFocusMarker);
 
       // Claude keeps its input box / status line / menu painted the whole time
       // it runs; they disappear only once it exits back to the shell prompt.
@@ -679,7 +715,7 @@ const ClaudePrompt = React.memo(({ sessionId, term }: ClaudePromptProps) => {
       // overlay down — this is the shell-agnostic deactivation signal (works on
       // cmd/PowerShell, which emit no shell-integration escape sequences).
       const claudeUiPresent =
-        hasInputBox || hasStatusMarker || hasFocusMarker || menuMode;
+        hasInputBox || hasStatusMarker || hasFocusMarker || menuMode || exitBanner;
       if (claudeUiPresent) lastUiSeenRef.current = Date.now();
 
       setStatusLines((prev) =>
@@ -1201,10 +1237,15 @@ const ClaudePrompt = React.memo(({ sessionId, term }: ClaudePromptProps) => {
     [sendDraft],
   );
 
-  const parsedStatus = React.useMemo(
-    () => parseStatusLines(statusLines),
-    [statusLines],
-  );
+  const parsedStatus = React.useMemo(() => {
+    const scraped = parseStatusLines(statusLines);
+    if (!structuredState) return scraped;
+    return {
+      ...scraped,
+      model: structuredState.model ?? scraped.model,
+      mode: structuredState.mode ?? scraped.mode,
+    };
+  }, [statusLines, structuredState]);
   const hasStatus =
     parsedStatus.model != null ||
     parsedStatus.mode != null ||

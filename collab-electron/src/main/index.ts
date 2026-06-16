@@ -30,6 +30,7 @@ import { registerIpcHandlers, setMainWindow } from "./ipc";
 import { registerCanvasRpc } from "./canvas-rpc";
 import { registerIntegrationsIpc } from "./integrations";
 import { initAgentResume, registerAgentResumeIpc } from "./agent-resume";
+import { initClaudeState } from "./claude-state";
 import {
   registerMethod,
   startJsonRpcServer,
@@ -907,6 +908,7 @@ app.whenReady().then(async () => {
   registerAgentIpc(mainWindow!, config);
   registerToggleShortcuts(mainWindow!);
   initAgentResume();
+  initClaudeState(mainWindow!);
 
   initMainAnalytics();
   trackEvent("app_launched");
