@@ -221,10 +221,13 @@ export function createViewport(canvasEl, gridCanvas, tilesRef) {
 		prevCanvasW = w;
 		prevCanvasH = h;
 		resizeGridCanvas();
-		updateCanvas();
+		drawGrid();
+		if (onResize) onResize();
 	}).observe(canvasEl);
 
 	resizeGridCanvas();
+
+	let onResize = null;
 
 	return {
 		init(viewportState, callback) {
@@ -232,6 +235,7 @@ export function createViewport(canvasEl, gridCanvas, tilesRef) {
 			onUpdate = callback;
 			updateCanvas();
 		},
+		setOnResize(cb) { onResize = cb; },
 		updateCanvas,
 		redrawGrid: drawGrid,
 		applyZoom,

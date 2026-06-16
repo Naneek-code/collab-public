@@ -180,8 +180,6 @@ const altCmdOrCtrl = (input: Electron.Input): boolean =>
   input.alt && (input.meta || input.control);
 const ctrlOnly = (input: Electron.Input): boolean =>
   input.control && !input.meta;
-const altOnly = (input: Electron.Input): boolean =>
-  input.alt && !input.meta && !input.control && !input.shift;
 
 interface ShortcutEntry {
   modifier: (input: Electron.Input) => boolean;
@@ -190,7 +188,6 @@ interface ShortcutEntry {
 
 const TOGGLE_SHORTCUTS: Record<string, ShortcutEntry[]> = {
   KeyB: [
-    { modifier: altCmdOrCtrl, action: "toggle-agent" },
     { modifier: cmdOrCtrl, action: "sidebar-files" },
   ],
   Backslash: [{ modifier: cmdOrCtrl, action: "sidebar-files" }],
@@ -200,10 +197,11 @@ const TOGGLE_SHORTCUTS: Record<string, ShortcutEntry[]> = {
   KeyN: [{ modifier: cmdOrCtrl, action: "new-tile" }],
   KeyW: [{ modifier: cmdOrCtrl, action: "close-tile" }],
   KeyT: [{ modifier: shiftCmdOrCtrl, action: "reopen-tile" }],
-  ArrowRight: [{ modifier: altOnly, action: "focus-tile-right" }],
-  ArrowLeft: [{ modifier: altOnly, action: "focus-tile-left" }],
-  ArrowUp: [{ modifier: altOnly, action: "focus-tile-up" }],
-  ArrowDown: [{ modifier: altOnly, action: "focus-tile-down" }],
+  ArrowRight: [{ modifier: altCmdOrCtrl, action: "focus-tile-right" }],
+  ArrowLeft: [{ modifier: altCmdOrCtrl, action: "focus-tile-left" }],
+  ArrowUp: [{ modifier: altCmdOrCtrl, action: "focus-tile-up" }],
+  ArrowDown: [{ modifier: altCmdOrCtrl, action: "focus-tile-down" }],
+  KeyF: [{ modifier: altCmdOrCtrl, action: "toggle-fullscreen-tile" }],
 };
 
 const TOGGLE_SHORTCUT_KEYS: Record<string, ShortcutEntry[]> = {
@@ -214,6 +212,7 @@ const TOGGLE_SHORTCUT_KEYS: Record<string, ShortcutEntry[]> = {
   n: TOGGLE_SHORTCUTS.KeyN!,
   w: TOGGLE_SHORTCUTS.KeyW!,
   t: TOGGLE_SHORTCUTS.KeyT!,
+  f: TOGGLE_SHORTCUTS.KeyF!,
 };
 
 function normalizeShortcutKey(key: string | undefined): string | null {

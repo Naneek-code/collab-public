@@ -188,6 +188,36 @@ export function createTileManager({
 		}
 	}
 
+	let fullscreenTileId = null;
+	const panelViewer = tileLayer.parentElement;
+
+	function toggleTileFullscreen(id) {
+		const dom = tileDOMs.get(id);
+		if (!dom) return;
+
+		if (fullscreenTileId === id) {
+			dom.container.classList.remove("tile-fullscreen");
+			dom.container.style.cssText = "";
+			panelViewer.classList.remove("has-fullscreen-tile");
+			fullscreenTileId = null;
+			repositionAllTiles();
+		} else {
+			if (fullscreenTileId) {
+				const prev = tileDOMs.get(fullscreenTileId);
+				if (prev) {
+					prev.container.classList.remove("tile-fullscreen");
+					prev.container.style.cssText = "";
+				}
+			}
+			fullscreenTileId = id;
+			dom.container.classList.add("tile-fullscreen");
+			dom.container.style.cssText = "";
+			panelViewer.classList.add("has-fullscreen-tile");
+			focusCanvasTile(id);
+			repositionAllTiles();
+		}
+	}
+
 	// -- Webview spawning --
 
 	function spawnTerminalWebview(tile, autoFocus = false) {
@@ -459,15 +489,6 @@ export function createTileManager({
 				syncSelectionVisuals();
 				focusCanvasTile(id, e);
 			},
-			onOpenInViewer: (id) => {
-				const t = getTile(id);
-				if (t?.filePath) {
-					window.shellApi.trackEvent(
-						"tile_opened_in_viewer", { type: t.type },
-					);
-					window.shellApi.selectFile(t.filePath);
-				}
-			},
 			onNavigate: (id, url) => {
 				const t = getTile(id);
 				if (!t || t.type !== "browser") return;
@@ -491,6 +512,9 @@ export function createTileManager({
 				});
 				spawnTerminalWebview(newTile, true);
 				saveCanvasImmediate();
+			},
+			onToggleFullscreen: (id) => {
+				toggleTileFullscreen(id);
 			},
 			onRename: (id) => {
 				const t = getTile(id);
@@ -855,8 +879,11 @@ export function createTileManager({
 		reopenLastClosedTile,
 		getTileDOMs: () => tileDOMs,
 		getFocusedTileId: () => focusedTileId,
+		getFocusedTile: () => getTile(focusedTileId),
 		setFocusedTileId: (id) => { focusedTileId = id; },
 		renameTile,
+		toggleTileFullscreen,
+		getFullscreenTileId: () => fullscreenTileId,
 		updateTileForRename,
 		closeTilesForDeletedPaths,
 		broadcastToTileWebviews,

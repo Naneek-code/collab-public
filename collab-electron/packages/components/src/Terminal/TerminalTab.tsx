@@ -193,6 +193,19 @@ function TerminalTab({
 					return false;
 				}
 			}
+			// Command+Arrow on macOS: jump to start/end of line, matching
+			// the system terminal. ESC has no metaKey, so send the
+			// readline beginning/end-of-line controls (Ctrl-A / Ctrl-E).
+			if (IS_MAC && e.type === "keydown" && e.metaKey && !e.altKey && !e.ctrlKey) {
+				if (e.key === "ArrowLeft") {
+					window.api.ptyWrite(sessionId, "\x01");
+					return false;
+				}
+				if (e.key === "ArrowRight") {
+					window.api.ptyWrite(sessionId, "\x05");
+					return false;
+				}
+			}
 			const primaryModifier = IS_MAC ? e.metaKey : e.ctrlKey;
 			if (e.type === "keydown" && primaryModifier) {
 				const key = e.key.toLowerCase();

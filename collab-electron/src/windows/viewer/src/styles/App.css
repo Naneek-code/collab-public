@@ -266,11 +266,8 @@ html:not(.dark) .item-filepath {
 }
 
 .app:not(.nav-visible) .item-filepath {
-	display: none;
-}
-
-.app:not(.nav-visible) .close-overlay-control {
-	top: 21px;
+	padding-left: 86px;
+	min-height: 38px;
 }
 
 .filepath-text {
@@ -1149,7 +1146,7 @@ button {
 	align-items: center;
 	pointer-events: auto;
 	position: fixed;
-	top: 40px;
+	top: 48px;
 	right: 16px;
 	z-index: 10000;
 }

@@ -479,15 +479,10 @@ body.titlebar-collapsed #panels {
 	background: rgba(var(--canvas-bg-rgb), var(--canvas-opacity));
 }
 
-#panel-agent {
-	display: flex;
-	flex-direction: column;
-	overflow: hidden;
-	min-height: 0;
-	border: 1px solid var(--border);
-	border-radius: var(--island-radius);
-	box-shadow: var(--island-shadow);
-	background: rgba(var(--bg-rgb), calc(1 - (1 - var(--canvas-opacity)) / 2));
+#panel-agent,
+#agent-resize,
+#agent-toggle {
+	display: none !important;
 }
 
 .platform-win #panel-agent {
@@ -1167,6 +1162,13 @@ body.titlebar-collapsed #titlebar {
 	cursor: grabbing;
 }
 
+.tile-title-group {
+	display: flex;
+	align-items: center;
+	gap: 4px;
+	min-width: 0;
+}
+
 .tile-title-text {
 	font-size: 13px;
 	line-height: 1;
@@ -1196,6 +1198,7 @@ body.titlebar-collapsed #titlebar {
 	align-items: center;
 	gap: 2px;
 	flex-shrink: 0;
+	cursor: default;
 }
 
 .tile-action-btn {
@@ -1203,7 +1206,7 @@ body.titlebar-collapsed #titlebar {
 	line-height: 1;
 	color: var(--fg);
 	opacity: 0.4;
-	cursor: pointer;
+	cursor: default;
 	padding: 0 2px;
 	border-radius: 4px;
 	display: flex;
@@ -1288,6 +1291,56 @@ body.titlebar-collapsed #titlebar {
 .canvas-tile[data-tile-type="term"] .tile-content {
 	padding: 0;
 }
+
+/* Fullscreen tile fills the entire canvas viewport */
+.canvas-tile.tile-fullscreen {
+	position: absolute;
+	inset: 0;
+	width: 100% !important;
+	height: 100% !important;
+	transform: none !important;
+	z-index: 109 !important;
+	border: none;
+}
+
+.canvas-tile.tile-fullscreen::before,
+.canvas-tile.tile-fullscreen::after {
+	display: none;
+}
+
+.canvas-tile.tile-fullscreen webview {
+	pointer-events: auto;
+}
+
+.canvas-tile.tile-fullscreen .tile-title-bar {
+	min-height: 38px;
+}
+
+#panel-viewer:not(.nav-open) .canvas-tile.tile-fullscreen .tile-title-bar {
+	padding-left: 86px;
+}
+
+.canvas-tile.tile-fullscreen .tile-close-btn {
+	display: none;
+}
+
+.canvas-tile.tile-fullscreen .tile-btn-group,
+.canvas-tile.tile-fullscreen .tile-nav-group,
+.canvas-tile.tile-fullscreen .tile-url-input {
+	-webkit-app-region: no-drag;
+	position: relative;
+	z-index: 101;
+}
+
+.has-fullscreen-tile > #grid-canvas,
+.has-fullscreen-tile > #edge-indicators,
+.has-fullscreen-tile > #zoom-indicator,
+.has-fullscreen-tile > #minimap-wrapper,
+.has-fullscreen-tile > #new-tile-btn,
+.has-fullscreen-tile > #tile-layer > .canvas-tile:not(.tile-fullscreen) {
+	display: none;
+}
+
 
 /* Tile webviews are non-interactive by default */
 .canvas-tile webview {

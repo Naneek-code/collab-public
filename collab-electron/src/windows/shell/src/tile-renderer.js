@@ -28,10 +28,10 @@ function resolveInput(raw) {
  * @param {object} callbacks
  * @param {(id: string) => void} callbacks.onClose
  * @param {(id: string, e?: MouseEvent) => void} callbacks.onFocus
- * @param {((id: string) => void)|null} [callbacks.onOpenInViewer]
  * @param {((id: string, url: string) => void)|null} [callbacks.onNavigate]
  * @param {((id: string) => void)|null} [callbacks.onRename]
  * @param {((id: string) => void)|null} [callbacks.onDuplicate]
+ * @param {((id: string) => void)|null} [callbacks.onToggleFullscreen]
  */
 export function createTileDOM(tile, callbacks) {
   const container = document.createElement("div");
@@ -55,7 +55,10 @@ export function createTileDOM(tile, callbacks) {
   titleText.appendChild(nameSpan);
   if (tile.filePath) titleText.title = tile.filePath;
   if (tile.folderPath) titleText.title = tile.folderPath;
-  titleBar.appendChild(titleText);
+  const titleGroup = document.createElement("div");
+  titleGroup.className = "tile-title-group";
+  titleGroup.appendChild(titleText);
+  titleBar.appendChild(titleGroup);
 
   // For browser tiles, add nav controls and a URL input to the title bar
   let urlInput;
@@ -153,20 +156,20 @@ export function createTileDOM(tile, callbacks) {
       copyBtn.innerHTML = checkSvg;
       setTimeout(() => { copyBtn.innerHTML = copySvg; }, 1000);
     });
-    btnGroup.appendChild(copyBtn);
+    titleGroup.appendChild(copyBtn);
   }
 
-  if (tile.filePath && callbacks.onOpenInViewer) {
-    const viewBtn = document.createElement("button");
-    viewBtn.className = "tile-action-btn tile-view-btn";
-    viewBtn.innerHTML = `<svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M1 8s3-5.5 7-5.5S15 8 15 8s-3 5.5-7 5.5S1 8 1 8z"/><circle cx="8" cy="8" r="2.5"/></svg>`;
-    viewBtn.title = "Open in viewer";
-    viewBtn.addEventListener("mousedown", (e) => e.stopPropagation());
-    viewBtn.addEventListener("click", (e) => {
+  if (callbacks.onToggleFullscreen) {
+    const fsBtn = document.createElement("button");
+    fsBtn.className = "tile-action-btn tile-fullscreen-btn";
+    fsBtn.innerHTML = `<svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="4 1 1 1 1 4"/><polyline points="12 1 15 1 15 4"/><polyline points="4 15 1 15 1 12"/><polyline points="12 15 15 15 15 12"/></svg>`;
+    fsBtn.title = "Fullscreen";
+    fsBtn.addEventListener("mousedown", (e) => e.stopPropagation());
+    fsBtn.addEventListener("click", (e) => {
       e.stopPropagation();
-      callbacks.onOpenInViewer(tile.id);
+      callbacks.onToggleFullscreen(tile.id);
     });
-    btnGroup.appendChild(viewBtn);
+    btnGroup.appendChild(fsBtn);
   }
 
   const closeBtn = document.createElement("button");
@@ -315,6 +318,8 @@ export function startInlineRename(dom, tile, onCommit) {
  * @param {number} zoom
  */
 export function positionTile(container, tile, panX, panY, zoom) {
+  if (container.classList.contains("tile-fullscreen")) return;
+
   const inset = TILE_GAP / 2;
   const sx = (tile.x + inset) * zoom + panX;
   const sy = (tile.y + inset) * zoom + panY;

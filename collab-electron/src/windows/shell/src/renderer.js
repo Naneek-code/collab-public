@@ -747,6 +747,12 @@ async function init() {
 		tileManager.saveCanvasDebounced();
 	});
 
+	viewport.setOnResize(() => {
+		tileManager.repositionAllTiles();
+		edgeIndicators.update();
+		minimap.update();
+	});
+
 	edgeIndicators.update();
 	minimap.update();
 
@@ -1029,6 +1035,13 @@ async function init() {
 	// -- Selection keyboard handlers --
 
 	window.addEventListener("keydown", (e) => {
+		if (e.key === "Escape" && tileManager.getFullscreenTileId()) {
+			tileManager.toggleTileFullscreen(
+				tileManager.getFullscreenTileId(),
+			);
+			return;
+		}
+
 		if (e.key === "Escape" && getSelectedTiles().length > 0) {
 			clearSelection();
 			tileManager.syncSelectionVisuals();
@@ -1233,6 +1246,16 @@ async function init() {
 			if (reopened) {
 				edgeIndicators.panToTile(reopened);
 				minimap.update();
+			}
+		} else if (action === "toggle-fullscreen-tile") {
+			const fsId = tileManager.getFullscreenTileId();
+			if (fsId) {
+				tileManager.toggleTileFullscreen(fsId);
+			} else {
+				const focused = tileManager.getFocusedTile();
+				if (focused) {
+					tileManager.toggleTileFullscreen(focused.id);
+				}
 			}
 		} else if (
 			action === "focus-tile-right" || action === "focus-tile-left" ||
