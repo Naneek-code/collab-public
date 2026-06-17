@@ -78,14 +78,32 @@ export function createTileManager({
 		};
 	}
 
+	let transitioning = false;
+
+	function beginTransition() {
+		transitioning = true;
+		clearTimeout(saveTimer);
+	}
+
+	function endTransition() {
+		transitioning = false;
+	}
+
+	function isTransitioning() {
+		return transitioning;
+	}
+
 	function saveCanvasDebounced() {
+		if (transitioning) return;
 		clearTimeout(saveTimer);
 		saveTimer = setTimeout(() => {
+			if (transitioning) return;
 			onSaveDebounced(getCanvasStateForSave());
 		}, 500);
 	}
 
 	function saveCanvasImmediate() {
+		if (transitioning) return;
 		clearTimeout(saveTimer);
 		onSaveImmediate(getCanvasStateForSave());
 	}
@@ -893,5 +911,8 @@ export function createTileManager({
 		broadcastToTileWebviews,
 		saveCanvasDebounced,
 		saveCanvasImmediate,
+		beginTransition,
+		endTransition,
+		isTransitioning,
 	};
 }

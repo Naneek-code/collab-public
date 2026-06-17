@@ -706,6 +706,7 @@ async function init() {
 			tileListWebview.send(
 				"tile-list:focus", tile?.id || null,
 			);
+			window.shellApi.notifyTileFocused(tile?.id || null);
 		},
 		onTileDblClick(tile) {
 			edgeIndicators.panToTile(tile);
@@ -759,6 +760,15 @@ async function init() {
 
 	edgeIndicators.update();
 	minimap.update();
+
+	// -- Notification navigate (click on protected overlay toast) --
+
+	window.shellApi.onNotificationNavigate((tileId) => {
+		const tile = getTile(tileId);
+		if (!tile) return;
+		edgeIndicators.panToTile(tile);
+		tileManager.focusCanvasTile(tile.id);
+	});
 
 	// -- Agent panel init (after tileManager, since getAllWebviews references it) --
 
@@ -1841,31 +1851,38 @@ async function init() {
 	async function switchTab(tabId) {
 		if (tabId === currentTabId) return;
 		await saveCurrentCanvas();
-		// Detach BEFORE re-pointing the active tab: detach cancels any pending
-		// debounced save so the old canvas can't be written into the new tab.
+		tileManager.beginTransition();
 		tileManager.detachAllTiles();
 		await window.shellApi.tabSetActive(currentWorkspaceId, tabId);
 		await applyTab(currentWorkspaceId, tabId);
+		tileManager.endTransition();
 	}
 
 	async function newTab() {
 		await saveCurrentCanvas();
 		const tab = await window.shellApi.tabCreate(currentWorkspaceId);
 		if (!tab) return;
+		tileManager.beginTransition();
 		tileManager.detachAllTiles();
 		await window.shellApi.tabSetActive(currentWorkspaceId, tab.id);
 		await applyTab(currentWorkspaceId, tab.id);
+		tileManager.endTransition();
 	}
 
 	async function closeTab(tabId, isActive) {
 		const victim = isActive
 			? tileManager.getCanvasStateForSave()
 			: await window.shellApi.tabLoadState(currentWorkspaceId, tabId);
-		if (isActive) tileManager.detachAllTiles();
+		if (isActive) {
+			tileManager.beginTransition();
+			tileManager.detachAllTiles();
+		}
 		const res = await window.shellApi.tabDelete(currentWorkspaceId, tabId);
 		if (!res.deleted) {
-			// Deletion refused (last tab) — re-apply the live canvas.
-			if (isActive) await applyTab(currentWorkspaceId, currentTabId);
+			if (isActive) {
+				await applyTab(currentWorkspaceId, currentTabId);
+				tileManager.endTransition();
+			}
 			return;
 		}
 		reapPtySessions(victim);
@@ -1875,16 +1892,19 @@ async function init() {
 			);
 			await applyTab(currentWorkspaceId, res.activeTabId);
 		}
+		if (isActive) tileManager.endTransition();
 	}
 
 	async function switchWorkspace(workspaceId) {
 		if (workspaceId === currentWorkspaceId) return;
 		await saveCurrentCanvas();
+		tileManager.beginTransition();
 		tileManager.detachAllTiles();
 		await window.shellApi.workspaceMgrSetActive(workspaceId);
 		const t = await window.shellApi.tabGet(workspaceId);
 		const tabId = t.activeTabId ?? t.tabs[0]?.id ?? null;
 		await applyTab(workspaceId, tabId);
+		tileManager.endTransition();
 	}
 
 	async function newWorkspace() {
@@ -1893,14 +1913,18 @@ async function init() {
 	}
 
 	async function deleteWorkspace(workspaceId, isActive) {
-		// Reap pty sessions across every tab of the victim workspace before it
-		// is removed, so terminals don't leak as orphaned sidecar processes.
 		const states =
 			await window.shellApi.workspaceMgrListTabStates(workspaceId);
-		if (isActive) tileManager.detachAllTiles();
+		if (isActive) {
+			tileManager.beginTransition();
+			tileManager.detachAllTiles();
+		}
 		const res = await window.shellApi.workspaceMgrDelete(workspaceId);
 		if (!res.deleted) {
-			if (isActive) await applyTab(currentWorkspaceId, currentTabId);
+			if (isActive) {
+				await applyTab(currentWorkspaceId, currentTabId);
+				tileManager.endTransition();
+			}
 			return;
 		}
 		for (const state of states) reapPtySessions(state);
@@ -1910,6 +1934,7 @@ async function init() {
 			const tabId = t.activeTabId ?? t.tabs[0]?.id ?? null;
 			await applyTab(res.activeId, tabId);
 		}
+		if (isActive) tileManager.endTransition();
 	}
 
 	const workspaceBar = createWorkspaceBar({
@@ -1936,7 +1961,9 @@ async function init() {
 	// -- beforeunload save --
 
 	window.addEventListener("beforeunload", () => {
-		tileManager.saveCanvasImmediate();
+		if (!tileManager.isTransitioning()) {
+			tileManager.saveCanvasImmediate();
+		}
 	});
 }
 
