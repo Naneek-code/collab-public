@@ -397,7 +397,19 @@ export async function saveTabState(
   if (!file) return;
   const tab = tabOf(file, tabId);
   if (!tab) return;
-  tab.state = normalizeState(state);
+  const normalized = normalizeState(state);
+  if (
+    normalized.tiles.length === 0 &&
+    tab.state.tiles.length > 0
+  ) {
+    console.warn(
+      "[workspace-manager] Rejected save: would erase %d tiles for tab %s",
+      tab.state.tiles.length,
+      tabId,
+    );
+    return;
+  }
+  tab.state = normalized;
   await writeWorkspace(file);
 }
 
