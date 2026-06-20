@@ -25,6 +25,9 @@ contextBridge.exposeInMainWorld("notifApi", {
     cwd: string | null;
   }) => ipcRenderer.send("notif:clicked", data),
 
+  resize: (data: { height: number; empty: boolean }) =>
+    ipcRenderer.send("notif:resize", data),
+
   onTheme: (cb: (dark: boolean) => void) => {
     const handler = (_event: unknown, dark: boolean) => cb(dark);
     ipcRenderer.on("notif:theme", handler);

@@ -12,7 +12,7 @@ import { homedir } from "node:os";
 import { type BrowserWindow } from "electron";
 import { ipcMain } from "electron";
 import { COLLAB_DIR } from "./paths";
-import { getBinding } from "./agent-resume";
+import { getBinding, getTileIdBySession } from "./agent-resume";
 import { listLiveSidecarSessions } from "./pty";
 import { showOverlayNotification } from "./notification-overlay";
 
@@ -150,23 +150,8 @@ function readSessionStatus(session: TrackedSession): void {
     const raw = readFileSync(session.sessionFilePath, "utf8");
     const parsed = JSON.parse(raw);
     if (parsed?.status && parsed.status !== session.state.status) {
-      const prev = session.state.status;
       session.state.status = parsed.status;
       sendState(session.ptySessionId, session.state);
-
-      if (prev === "busy" && parsed.status === "idle") {
-        const label = session.tileId;
-        const binding = getBinding(session.tileId);
-        const cwd = binding?.cwd;
-        const title = cwd
-          ? cwd.replace(/\\/g, "/").split("/").pop() ?? cwd
-          : label;
-        showOverlayNotification({
-          title: title ?? "Terminal",
-          body: "Claude finished",
-          tileId: session.tileId,
-        });
-      }
     }
   } catch {}
 }
@@ -326,20 +311,25 @@ function pollClaudeSessionFiles(): void {
           const title = cwd
             ? cwd.replace(/\\/g, "/").split("/").pop() ?? "Terminal"
             : "Terminal";
+          const tileId = parsed.sessionId
+            ? getTileIdBySession(parsed.sessionId)
+            : null;
 
           if (prev.status === "busy" && parsed.status === "idle") {
             showOverlayNotification({
               title,
               body: "Claude finished",
-              tileId: null,
+              tileId,
               cwd,
+              sound: "finished",
             });
           } else if (parsed.status === "waiting") {
             showOverlayNotification({
               title,
               body: "Claude needs your attention",
-              tileId: null,
+              tileId,
               cwd,
+              sound: "attention",
             });
           }
         }

@@ -706,7 +706,10 @@ async function init() {
 			tileListWebview.send(
 				"tile-list:focus", tile?.id || null,
 			);
-			window.shellApi.notifyTileFocused(tile?.id || null);
+			window.shellApi.notifyTileFocused({
+				tileId: tile?.id || null,
+				cwd: tile?.cwd || tile?.autoTitle || null,
+			});
 			if (tile?.id) {
 				const badge = tileManager
 					?.getTileDOMs()?.get(tile.id)
@@ -811,6 +814,7 @@ async function init() {
 	window.shellApi.onNotificationBadge((data) => {
 		const tile = resolveTile(data);
 		if (!tile) return;
+		if (tile.id === tileManager.getFocusedTileId()) return;
 		const dom = tileManager.getTileDOMs().get(tile.id);
 		if (!dom) return;
 		if (!dom.container.querySelector(".tile-notif-badge")) {
@@ -841,6 +845,9 @@ async function init() {
 			surface !== "canvas-tile"
 		) {
 			tileManager.blurCanvasTileGuest();
+			window.shellApi.notifyTileFocused({
+				tileId: null, cwd: null,
+			});
 		}
 		activeSurface = surface;
 		if (surface !== "settings") {

@@ -1,6 +1,20 @@
 const DISMISS_MS = 8000;
 const MAX_TOASTS = 3;
 
+const soundCache = {};
+
+function playNotifSound(type) {
+	const file = type === "finished" ? "notif-finished.wav" : "notif-attention.wav";
+	const volume = type === "finished" ? 0.2 : 0.7;
+	if (!soundCache[type]) {
+		soundCache[type] = new Audio(file);
+	}
+	const audio = soundCache[type];
+	audio.volume = volume;
+	audio.currentTime = 0;
+	audio.play().catch(() => {});
+}
+
 const container = document.getElementById("toast-container");
 const toasts = new Map();
 
@@ -11,6 +25,17 @@ function applyTheme(dark) {
 	document.documentElement.classList.toggle("dark", dark);
 }
 
+function reportSize() {
+	const empty = toasts.size === 0;
+	const height = empty
+		? 0
+		: Math.ceil(container.getBoundingClientRect().height);
+	window.notifApi.resize({ height, empty });
+}
+
+const resizeObserver = new ResizeObserver(() => reportSize());
+resizeObserver.observe(container);
+
 function dismissToast(id) {
 	const el = toasts.get(id);
 	if (!el) return;
@@ -18,10 +43,11 @@ function dismissToast(id) {
 	el.addEventListener("animationend", () => {
 		el.remove();
 		toasts.delete(id);
+		reportSize();
 	}, { once: true });
 }
 
-function showToast({ id, title, body, tileId, cwd }) {
+function showToast({ id, title, body, tileId, cwd, sound }) {
 	if (toasts.has(id)) {
 		dismissToast(id);
 	}
@@ -80,8 +106,13 @@ function showToast({ id, title, body, tileId, cwd }) {
 
 	container.appendChild(el);
 	requestAnimationFrame(() => el.classList.add("toast-enter"));
+	// Fallback: if rAF is throttled, force the toast visible anyway.
+	setTimeout(() => el.classList.add("toast-enter"), 50);
+
+	if (sound) playNotifSound(sound);
 
 	toasts.set(id, el);
+	reportSize();
 
 	setTimeout(() => {
 		if (toasts.has(id)) dismissToast(id);

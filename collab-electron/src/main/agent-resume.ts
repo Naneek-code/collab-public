@@ -5,6 +5,7 @@ import {
   existsSync,
   mkdirSync,
   openSync,
+  readdirSync,
   readFileSync,
   readSync,
   statSync,
@@ -30,11 +31,13 @@ export interface AgentBinding {
   agentKind: AgentKind;
   cwd: string | null;
   updatedAt: number;
+  tileId?: string;
 }
 
 interface AgentEvent {
   kind?: string;
   ppid?: number;
+  tileId?: string | null;
   sessionId?: string | null;
   cwd?: string | null;
   source?: string | null;
@@ -59,6 +62,7 @@ process.stdin.on("end", () => {
     const record = {
       kind,
       ppid: process.ppid,
+      tileId: process.env.COLLAB_TILE_ID || null,
       sessionId: evt.session_id || null,
       cwd: evt.cwd || null,
       source: evt.source || null,
@@ -230,6 +234,23 @@ export function getBinding(tileId: string): AgentBinding | null {
   return null;
 }
 
+export function getTileIdBySession(agentSessionId: string): string | null {
+  try {
+    for (const file of readdirSync(BINDINGS_DIR)) {
+      if (!file.endsWith(".json")) continue;
+      try {
+        const parsed = JSON.parse(
+          readFileSync(join(BINDINGS_DIR, file), "utf8"),
+        ) as AgentBinding;
+        if (parsed?.agentSessionId === agentSessionId && parsed.tileId) {
+          return parsed.tileId;
+        }
+      } catch {}
+    }
+  } catch {}
+  return null;
+}
+
 export function clearBinding(tileId: string): void {
   try {
     unlinkSync(bindingPath(tileId));
@@ -237,14 +258,16 @@ export function clearBinding(tileId: string): void {
 }
 
 async function handleEvent(rec: AgentEvent): Promise<void> {
-  if (!rec.sessionId || !rec.ppid) return;
-  const tileId = await resolveTileId(rec.ppid);
+  if (!rec.sessionId) return;
+  const tileId = rec.tileId
+    ?? (rec.ppid ? await resolveTileId(rec.ppid) : null);
   if (!tileId) return;
   writeBinding(tileId, {
     agentSessionId: rec.sessionId,
     agentKind: rec.kind === "codex" ? "codex" : "claude",
     cwd: rec.cwd ?? null,
     updatedAt: rec.ts ?? Date.now(),
+    tileId,
   });
 }
 
