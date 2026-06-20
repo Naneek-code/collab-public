@@ -47,10 +47,21 @@ function App() {
         binding.agentKind === "codex"
           ? `codex resume ${binding.agentSessionId}`
           : `claude --resume ${binding.agentSessionId}`;
-      // Delay so the shell has printed its prompt before we type.
-      setTimeout(() => {
-        if (!cancelled) window.api.ptyWrite(newSessionId, `${cmd}\r`);
-      }, 1200);
+      // Wait for the shell to print its prompt before typing, otherwise the
+      // command is swallowed while the profile is still loading.
+      let sent = false;
+      const send = () => {
+        if (sent || cancelled) return;
+        sent = true;
+        window.api.offPtyData(newSessionId, onData);
+        window.api.ptyWrite(newSessionId, `${cmd}\r`);
+      };
+      const onData = () => {
+        window.api.offPtyData(newSessionId, onData);
+        setTimeout(send, 600);
+      };
+      window.api.onPtyData(newSessionId, onData);
+      setTimeout(send, 5000);
     };
 
     const createFreshSession = (
