@@ -277,6 +277,7 @@ export interface CollabApi {
     sessionId: string,
     data: string,
   ) => void;
+  clipboardWriteText: (text: string) => void;
   ptyResize: (
     sessionId: string,
     cols: number,

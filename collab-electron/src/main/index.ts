@@ -2,6 +2,7 @@ import "./logger";
 import {
   app,
   BrowserWindow,
+  clipboard,
   dialog,
   ipcMain,
   Menu,
@@ -667,6 +668,12 @@ ipcMain.on(
     handlePtyWrite(sessionId, data);
   },
 );
+
+ipcMain.on("clipboard:write-text", (_event, { text }: { text: string }) => {
+  if (typeof text === "string" && text.length > 0) {
+    clipboard.writeText(text);
+  }
+});
 
 function handlePtySendRawKeys(
   sessionId: string,

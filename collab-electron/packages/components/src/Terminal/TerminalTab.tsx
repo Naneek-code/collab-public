@@ -146,10 +146,14 @@ function TerminalTab({
 		// tmux's input parser which strips modifier info in legacy mode.
 		// Block both keydown AND keypress to prevent xterm from also
 		// sending \r through the normal onData path.
+		// Route clipboard writes through the main process. navigator.clipboard
+		// rejects with "Document is not focused" when the host webview does not
+		// hold DOM focus (the canvas or another tile owns it), which silently
+		// dropped copies inside embedded tiles.
 		const copySelectionToClipboard = () => {
 			const selection = term.getSelection();
 			if (!selection) return false;
-			void navigator.clipboard.writeText(selection).catch(() => {});
+			window.api.clipboardWriteText(selection);
 			return true;
 		};
 
@@ -403,6 +407,13 @@ function TerminalTab({
 			term.focus();
 		};
 
+		// Copy-on-select: a finished selection lands in the clipboard without
+		// Ctrl+C. clipboardWriteText goes through the main process, so this
+		// works even when the embedded webview never holds DOM focus.
+		const selectionDisposable = term.onSelectionChange(() => {
+			copySelectionToClipboard();
+		});
+
 		container.addEventListener("copy", handleCopy, true);
 		container.addEventListener("paste", handlePaste, true);
 		container.addEventListener("dragover", handleDragOver);
@@ -448,6 +459,7 @@ function TerminalTab({
 			container.removeEventListener("paste", handlePaste, true);
 			container.removeEventListener("dragover", handleDragOver);
 			container.removeEventListener("drop", handleDrop);
+			selectionDisposable.dispose();
 			window.api.offPtyData(sessionId, handleData);
 			offShellBlur();
 			setTermInstance(null);

@@ -277,6 +277,9 @@ contextBridge.exposeInMainWorld("api", {
   ptySendRawKeys: (sessionId: string, data: string) => {
     ipcRenderer.send("pty:send-raw-keys", { sessionId, data });
   },
+  clipboardWriteText: (text: string) => {
+    ipcRenderer.send("clipboard:write-text", { text });
+  },
   ptyResize: (
     sessionId: string,
     cols: number,
