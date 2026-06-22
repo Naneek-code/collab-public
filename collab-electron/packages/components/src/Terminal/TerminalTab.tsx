@@ -106,7 +106,12 @@ function TerminalTab({
 		// window regains focus (e.g. returning from another app that
 		// re-pastes via a synthetic Ctrl+V). Defaults to the terminal.
 		let lastFocusedSurface: "terminal" | "editor" = "terminal";
+		// Each tile is a separate webview. Only the active one may write the
+		// shared clipboard, otherwise a backgrounded tile whose PTY output
+		// reflows its xterm selection would clobber what another tile copied.
+		let active = document.hasFocus();
 		const onFocusIn = (ev: FocusEvent) => {
+			active = true;
 			const target = ev.target as HTMLElement | null;
 			if (!target) return;
 			if (target.closest(".claude-prompt-editor")) {
@@ -116,6 +121,7 @@ function TerminalTab({
 			}
 		};
 		const onWindowFocus = () => {
+			active = true;
 			if (lastFocusedSurface === "editor") {
 				const editor = container.parentElement?.querySelector(
 					".claude-prompt-editor",
@@ -411,8 +417,24 @@ function TerminalTab({
 		// Ctrl+C. clipboardWriteText goes through the main process, so this
 		// works even when the embedded webview never holds DOM focus.
 		const selectionDisposable = term.onSelectionChange(() => {
-			copySelectionToClipboard();
+			if (active) copySelectionToClipboard();
 		});
+
+		// Ctrl/Cmd+C copies the terminal selection even when keyboard focus is
+		// on the floating Claude prompt editor (or anywhere in the guest), not
+		// just xterm. A live DOM text selection (e.g. inside the editor) takes
+		// precedence so the native copy of that text still works.
+		const onCopyKey = (e: KeyboardEvent) => {
+			if (!active) return;
+			const mod = IS_MAC ? e.metaKey : e.ctrlKey;
+			if (!mod || e.key.toLowerCase() !== "c") return;
+			if (window.getSelection()?.toString()) return;
+			if (copySelectionToClipboard()) {
+				e.preventDefault();
+				e.stopImmediatePropagation();
+			}
+		};
+		document.addEventListener("keydown", onCopyKey, true);
 
 		container.addEventListener("copy", handleCopy, true);
 		container.addEventListener("paste", handlePaste, true);
@@ -420,9 +442,10 @@ function TerminalTab({
 		container.addEventListener("drop", handleDrop);
 
 		const offShellBlur = window.api.onShellBlur(() => {
+			active = false;
 			term.blur();
-			const active = document.activeElement as HTMLElement | null;
-			active?.blur();
+			const activeEl = document.activeElement as HTMLElement | null;
+			activeEl?.blur();
 		});
 
 		// Debounce resize via rAF to coalesce rapid events
@@ -459,6 +482,7 @@ function TerminalTab({
 			container.removeEventListener("paste", handlePaste, true);
 			container.removeEventListener("dragover", handleDragOver);
 			container.removeEventListener("drop", handleDrop);
+			document.removeEventListener("keydown", onCopyKey, true);
 			selectionDisposable.dispose();
 			window.api.offPtyData(sessionId, handleData);
 			offShellBlur();
