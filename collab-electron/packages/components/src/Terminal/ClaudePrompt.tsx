@@ -469,6 +469,9 @@ function looksLikeClaude(text: string): boolean {
     return true;
   }
   if (/\[[^\]\n]*\b(opus|sonnet|haiku)\b[^\]\n]*\]/i.test(text)) return true;
+  // Startup banner — present before any input box or status line is painted,
+  // and model-agnostic (works for non-Claude models routed through the CLI).
+  if (/\bClaude Code v\d/i.test(text)) return true;
   if (/press ctrl-?c again/i.test(text)) return true;
   return false;
 }
@@ -827,7 +830,7 @@ const ClaudePrompt = React.memo(({ sessionId, term }: ClaudePromptProps) => {
       const hasStatusMarker = /\[[^\]]+\]/.test(statusText);
       const hasFocusMarker = /\bfocus\b/i.test(statusText);
       const hasModeBanner = rows.some((line) =>
-        /mode on|to cycle\)|esc to interrupt|for agents|accept edits|bypass permissions|plan mode|⏵⏵/i.test(
+        /mode on|to cycle\)|esc to interrupt|for agents|accept edits|bypass permissions|plan mode|⏵⏵|\?\s*for shortcuts|Claude Code v\d/i.test(
           line,
         ),
       );
