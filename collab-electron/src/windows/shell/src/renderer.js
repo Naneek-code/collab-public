@@ -14,6 +14,7 @@ import { createPanel } from "./panel-manager.js";
 import { createWorkspaceManager } from "./workspace-manager.js";
 import { createCanvasRpc } from "./canvas-rpc.js";
 import { createTileManager } from "./tile-manager.js";
+import { createFrameManager } from "./frames.js";
 import { createWorkspaceBar } from "./workspace-bar.js";
 import { updateTileTitle, getTileLabel } from "./tile-renderer.js";
 
@@ -224,6 +225,7 @@ async function init() {
 	const loadingStatusEl =
 		document.getElementById("loading-status");
 	const tileLayer = document.getElementById("tile-layer");
+	const frameLayer = document.getElementById("frame-layer");
 	const panelAgent = document.getElementById("panel-agent");
 	const agentResizeHandle = document.getElementById("agent-resize");
 	const agentToggle = document.getElementById("agent-toggle");
@@ -664,9 +666,11 @@ async function init() {
 	// -- Tile manager --
 
 	let minimapRef = null;
+	let frameManager = null;
 	const tileManager = createTileManager({
 		tileLayer, viewportState, configs,
 		getAllWebviews,
+		getFrames: () => frameManager?.getFramesForSave() ?? [],
 		isSpaceHeld: () => spaceHeld,
 		onReposition: () => { viewport.redrawGrid(); minimapRef?.update(); },
 		onSaveDebounced(state) {
@@ -722,6 +726,15 @@ async function init() {
 		},
 	});
 
+	// -- Frame manager --
+
+	frameManager = createFrameManager({
+		frameLayer, viewportState,
+		getTileDOMs: () => tileManager.getTileDOMs(),
+		getAllWebviews,
+		onSave: () => tileManager.saveCanvasImmediate(),
+	});
+
 	// -- Edge indicators --
 
 	const edgeIndicators = createEdgeIndicators({
@@ -756,6 +769,7 @@ async function init() {
 
 	viewport.init(viewportState, () => {
 		tileManager.repositionAllTiles();
+		frameManager.repositionAllFrames();
 		edgeIndicators.update();
 		minimap.wake();
 		tileManager.saveCanvasDebounced();
@@ -763,6 +777,7 @@ async function init() {
 
 	viewport.setOnResize(() => {
 		tileManager.repositionAllTiles();
+		frameManager.repositionAllFrames();
 		edgeIndicators.update();
 		minimap.update();
 	});
@@ -1051,9 +1066,14 @@ async function init() {
 		const selected = await window.shellApi.showContextMenu([
 			{ id: "new-terminal", label: "New terminal tile" },
 			{ id: "new-browser", label: "New browser tile" },
+			{ id: "new-frame", label: "New frame" },
 		]);
 
-		if (selected === "new-terminal") {
+		if (selected === "new-frame") {
+			frameManager.createFrame(cx, cy);
+			tileManager.saveCanvasImmediate();
+			minimap.update();
+		} else if (selected === "new-terminal") {
 			const size = getTerminalSize();
 			const tile = tileManager.createCanvasTile(
 				"term", cx, cy, { ...size },
@@ -1839,6 +1859,7 @@ async function init() {
 			: 0;
 		viewport.updateCanvas();
 		tileManager.restoreCanvasState(state?.tiles ?? []);
+		frameManager.restoreFrames(state?.frames ?? []);
 		viewport.redrawGrid();
 		minimap.update();
 

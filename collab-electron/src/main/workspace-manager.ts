@@ -33,9 +33,20 @@ interface TileState {
   zIndex: number;
 }
 
+interface FrameState {
+  id: string;
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+  title: string;
+  color: string;
+}
+
 export interface CanvasState {
   version: 1;
   tiles: TileState[];
+  frames?: FrameState[];
   viewport: {
     centerX: number;
     centerY: number;

@@ -29,6 +29,7 @@ export function createTileManager({
 	onTileFocused,
 	onTileDblClick,
 	onReposition,
+	getFrames = () => [],
 }) {
 	/** @type {Map<string, {container: HTMLElement, contentArea: HTMLElement, titleText: HTMLElement, webview?: HTMLElement}>} */
 	const tileDOMs = new Map();
@@ -70,6 +71,7 @@ export function createTileManager({
 				userTitle: t.userTitle,
 				autoTitle: t.autoTitle,
 			})),
+			frames: getFrames(),
 			viewport: {
 				panX: viewportState.panX,
 				panY: viewportState.panY,
