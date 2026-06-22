@@ -222,9 +222,16 @@ function parseStatusLines(lines: string[]): ParsedStatus {
   const progressMatch = firstLine.match(/\][^%]*?(\d{1,3})\s*%/);
   if (progressMatch?.[1]) result.progress = parseInt(progressMatch[1], 10);
 
-  const modeMatch = combined.match(/([\w\s]+?)\s+on\s+\(\S+\s+to\s+cycle\)/i);
+  // The "<X> mode on (shift+tab to cycle)" banner is Claude's live mode — it
+  // updates the instant Shift+Tab is pressed, well before the transcript
+  // records a permission-mode entry. Normalize "auto mode" -> "auto" etc.
+  const modeMatch = combined.match(/([\w\s-]+?)\s+on\s+\(\S+\s+to\s+cycle\)/i);
   if (modeMatch?.[1]) {
-    result.mode = modeMatch[1].trim().toLowerCase().replace(/\s+/g, " ");
+    result.mode = modeMatch[1]
+      .trim()
+      .toLowerCase()
+      .replace(/\s+/g, " ")
+      .replace(/\s*mode$/, "");
   }
 
   if (/\bfocus\b/i.test(combined)) result.focused = true;
@@ -1436,7 +1443,7 @@ const ClaudePrompt = React.memo(({ sessionId, term }: ClaudePromptProps) => {
             ...scraped,
             ...(model ? { model } : {}),
             ...(contextInfo ? { contextInfo } : {}),
-            mode: prettyMode(structuredState?.permissionMode) ?? scraped.mode,
+            mode: scraped.mode ?? prettyMode(structuredState?.permissionMode),
           }
         : scraped;
     if (base.progress == null && structuredState?.usedPercentage != null) {
