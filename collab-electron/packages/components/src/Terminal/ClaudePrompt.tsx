@@ -1,7 +1,7 @@
 import * as React from "react";
 import * as ReactDOM from "react-dom";
 import type { Terminal } from "@xterm/xterm";
-import { Sparkles, ZoomIn, ZoomOut, RotateCcw, X } from "lucide-react";
+import { Sparkles, ZoomIn, ZoomOut, RotateCcw, X, ChevronDown } from "lucide-react";
 import { ClaudeLogo } from "./ClaudeLogo";
 import { CLAUDE_MODELS, CLAUDE_SLASH_COMMANDS } from "./claude-prompt-commands";
 import {
@@ -43,11 +43,24 @@ const BPM_END = "\x1b[201~";
 const HISTORY_KEY = "claude:prompthistory";
 
 const MODEL_QUICK_SWITCHES = [
-  { id: "sonnet", label: "S", title: "Sonnet" },
-  { id: "claude-opus-4-6", label: "O6", title: "Opus 4.6" },
-  { id: "claude-opus-4-7", label: "O7", title: "Opus 4.7" },
-  { id: "claude-opus-4-8", label: "O8", title: "Opus 4.8" },
+  { id: "sonnet", title: "Sonnet" },
+  { id: "claude-opus-4-6", title: "Opus 4.6" },
+  { id: "claude-opus-4-7", title: "Opus 4.7" },
+  { id: "claude-opus-4-8", title: "Opus 4.8" },
+  { id: "claude-opus-4-6[1m]", title: "Opus 4.6 · 1M" },
+  { id: "claude-opus-4-7[1m]", title: "Opus 4.7 · 1M" },
+  { id: "claude-opus-4-8[1m]", title: "Opus 4.8 · 1M" },
 ] as const;
+
+function matchQuickSwitchId(rawModel: string | undefined): string {
+  if (!rawModel) return "";
+  const m = rawModel.toLowerCase();
+  return (
+    MODEL_QUICK_SWITCHES.find((s) =>
+      s.id === "sonnet" ? m.includes("sonnet") : m === s.id,
+    )?.id ?? ""
+  );
+}
 
 function draftKey(sessionId: string): string {
   return `claude:draft:${sessionId}`;
@@ -147,10 +160,50 @@ function consolidateParts(parts: ContentPart[]): ContentPart[] {
 function modeKey(mode: string): string {
   const m = mode.toLowerCase();
   if (m.includes("plan")) return "plan";
-  if (m.includes("auto")) return "auto";
-  if (m.includes("bypass")) return "bypass";
   if (m.includes("accept")) return "accept";
+  if (m.includes("bypass")) return "bypass";
+  if (m.includes("auto")) return "auto";
   return "default";
+}
+
+const PERMISSION_MODE_LABELS: Record<string, string> = {
+  auto: "normal",
+  default: "normal",
+  plan: "plan",
+  acceptedits: "accept edits",
+  bypasspermissions: "bypass permissions",
+};
+
+function prettyMode(raw: string | undefined): string | undefined {
+  if (!raw) return undefined;
+  const key = raw.toLowerCase().replace(/[\s_-]/g, "");
+  return PERMISSION_MODE_LABELS[key] ?? raw.toLowerCase().replace(/\s+/g, " ");
+}
+
+// Turns a raw model id (`claude-opus-4-8`, `claude-haiku-4-5-20251001`,
+// `claude-opus-4-8[1m]`) into a display name + optional context label.
+function prettyModel(raw: string | undefined): {
+  model?: string;
+  contextInfo?: string;
+} {
+  if (!raw) return {};
+  let contextInfo: string | undefined;
+  const beta = raw.match(/\[([^\]]+)\]/);
+  if (beta?.[1]) {
+    const b = beta[1].toLowerCase();
+    if (b.includes("1m")) contextInfo = "1M context";
+  }
+  const label = raw
+    .replace(/\[[^\]]*\]/, "")
+    .replace(/-\d{6,8}$/, "")
+    .split("-")
+    .filter(Boolean)
+    .map((s) => s.charAt(0).toUpperCase() + s.slice(1))
+    .join("-");
+  const out: { model?: string; contextInfo?: string } = {};
+  if (label) out.model = label;
+  if (contextInfo) out.contextInfo = contextInfo;
+  return out;
 }
 
 function parseStatusLines(lines: string[]): ParsedStatus {
@@ -436,6 +489,7 @@ const ClaudePrompt = React.memo(({ sessionId, term }: ClaudePromptProps) => {
   const [manualHide, setManualHide] = React.useState(false);
   const [isPasting, setIsPasting] = React.useState(false);
   const [isSubmitting, setIsSubmitting] = React.useState(false);
+  const [modelMenuOpen, setModelMenuOpen] = React.useState(false);
   const [structuredState, setStructuredState] = React.useState<{
     model?: string;
     mode?: string;
@@ -444,6 +498,7 @@ const ClaudePrompt = React.memo(({ sessionId, term }: ClaudePromptProps) => {
   } | null>(null);
 
   const editorRef = React.useRef<HTMLDivElement>(null);
+  const modelMenuRef = React.useRef<HTMLDivElement>(null);
   const historyIndexRef = React.useRef<number | null>(null);
   const historyDraftRef = React.useRef<DraftState>(cloneDraft(EMPTY_DRAFT));
   const errorTimerRef = React.useRef<ReturnType<typeof setTimeout> | null>(
@@ -555,6 +610,17 @@ const ClaudePrompt = React.memo(({ sessionId, term }: ClaudePromptProps) => {
       .catch(() => {});
     return () => window.api.offClaudeState(sessionId, cb);
   }, [sessionId]);
+
+  React.useEffect(() => {
+    if (!modelMenuOpen) return;
+    const onDown = (e: MouseEvent) => {
+      if (!modelMenuRef.current?.contains(e.target as Node)) {
+        setModelMenuOpen(false);
+      }
+    };
+    window.addEventListener("mousedown", onDown, true);
+    return () => window.removeEventListener("mousedown", onDown, true);
+  }, [modelMenuOpen]);
 
   const prevHiddenRef = React.useRef(false);
   React.useEffect(() => {
@@ -697,6 +763,11 @@ const ClaudePrompt = React.memo(({ sessionId, term }: ClaudePromptProps) => {
       const hasInputBox = boxTop >= 0 || boxBottom >= 0;
       const hasStatusMarker = /\[[^\]]+\]/.test(statusText);
       const hasFocusMarker = /\bfocus\b/i.test(statusText);
+      const hasModeBanner = rows.some((line) =>
+        /mode on|to cycle\)|esc to interrupt|for agents|accept edits|bypass permissions|plan mode|⏵⏵/i.test(
+          line,
+        ),
+      );
       const menuMode = rows.some((line) =>
         /\b(resume session|select a|select an|switch to|choose)\b|\(\s*\d+\s+of\s+\d+\s*\)|to show all projects|only show current branch/i.test(
           line,
@@ -707,7 +778,11 @@ const ClaudePrompt = React.memo(({ sessionId, term }: ClaudePromptProps) => {
       );
       const questionMode =
         menuMode ||
-        (!exitBanner && !hasInputBox && !hasStatusMarker && !hasFocusMarker);
+        (!exitBanner &&
+          !hasInputBox &&
+          !hasStatusMarker &&
+          !hasFocusMarker &&
+          !hasModeBanner);
 
       // Claude keeps its input box / status line / menu painted the whole time
       // it runs; they disappear only once it exits back to the shell prompt.
@@ -715,7 +790,12 @@ const ClaudePrompt = React.memo(({ sessionId, term }: ClaudePromptProps) => {
       // overlay down — this is the shell-agnostic deactivation signal (works on
       // cmd/PowerShell, which emit no shell-integration escape sequences).
       const claudeUiPresent =
-        hasInputBox || hasStatusMarker || hasFocusMarker || menuMode || exitBanner;
+        hasInputBox ||
+        hasStatusMarker ||
+        hasFocusMarker ||
+        hasModeBanner ||
+        menuMode ||
+        exitBanner;
       if (claudeUiPresent) lastUiSeenRef.current = Date.now();
 
       setStatusLines((prev) =>
@@ -1240,10 +1320,13 @@ const ClaudePrompt = React.memo(({ sessionId, term }: ClaudePromptProps) => {
   const parsedStatus = React.useMemo(() => {
     const scraped = parseStatusLines(statusLines);
     if (!structuredState) return scraped;
+    const fromFiles = prettyModel(structuredState.model);
+    const mode = prettyMode(structuredState.permissionMode) ?? scraped.mode;
     return {
       ...scraped,
-      model: structuredState.model ?? scraped.model,
-      mode: structuredState.mode ?? scraped.mode,
+      model: fromFiles.model ?? scraped.model,
+      contextInfo: fromFiles.contextInfo ?? scraped.contextInfo,
+      mode,
     };
   }, [statusLines, structuredState]);
   const hasStatus =
@@ -1251,6 +1334,10 @@ const ClaudePrompt = React.memo(({ sessionId, term }: ClaudePromptProps) => {
     parsedStatus.mode != null ||
     parsedStatus.focused ||
     parsedStatus.progress != null;
+  const hasScrapedStatusline = React.useMemo(
+    () => parseStatusLines(statusLines).model != null,
+    [statusLines],
+  );
 
   if (!claudeCodeActive) return null;
 
@@ -1266,7 +1353,7 @@ const ClaudePrompt = React.memo(({ sessionId, term }: ClaudePromptProps) => {
         </button>
       )}
       <div
-        className="claude-prompt"
+        className={`claude-prompt${hasScrapedStatusline ? "" : " claude-prompt-compact"}`}
         style={isHidden ? { display: "none" } : undefined}
         onClick={(e) => {
           const target = e.target as HTMLElement;
@@ -1305,16 +1392,40 @@ const ClaudePrompt = React.memo(({ sessionId, term }: ClaudePromptProps) => {
             spellCheck={false}
           />
           <div className="claude-prompt-actions">
-            {MODEL_QUICK_SWITCHES.map((m) => (
+            <div className="claude-prompt-model" ref={modelMenuRef}>
               <button
-                key={m.id}
-                className="claude-prompt-model-btn"
-                title={m.title}
-                onClick={() => handleModelSwitch(m.id)}
+                type="button"
+                className="claude-prompt-model-trigger"
+                title="Switch model"
+                onClick={() => setModelMenuOpen((o) => !o)}
               >
-                {m.label}
+                {MODEL_QUICK_SWITCHES.find(
+                  (m) => m.id === matchQuickSwitchId(structuredState?.model),
+                )?.title ?? "Model"}
+                <ChevronDown size={11} />
               </button>
-            ))}
+              {modelMenuOpen && (
+                <div className="claude-prompt-model-menu">
+                  {MODEL_QUICK_SWITCHES.map((m) => (
+                    <button
+                      type="button"
+                      key={m.id}
+                      className={`claude-prompt-model-item${
+                        m.id === matchQuickSwitchId(structuredState?.model)
+                          ? " is-active"
+                          : ""
+                      }`}
+                      onClick={() => {
+                        handleModelSwitch(m.id);
+                        setModelMenuOpen(false);
+                      }}
+                    >
+                      {m.title}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
           </div>
         </div>
         {errorMsg && <div className="claude-prompt-error">{errorMsg}</div>}
