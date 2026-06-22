@@ -162,6 +162,9 @@ export interface CollabApi {
   getDeviceId: () => Promise<string>;
   getPref: (key: string) => Promise<unknown>;
   setPref: (key: string, value: unknown) => Promise<void>;
+  setNativeContext: (
+    enabled: boolean,
+  ) => Promise<{ ok: boolean; error?: string }>;
   listTerminalTargets: () => Promise<TerminalTargetOption[]>;
   getWorkspacePref: (key: string, workspacePath: string) => Promise<unknown>;
   setWorkspacePref: (

@@ -15,6 +15,9 @@ type ThemeMode = "light" | "dark" | "system";
 interface SettingsApi {
   getPref: (key: string) => Promise<unknown>;
   setPref: (key: string, value: unknown) => Promise<void>;
+  setNativeContext: (
+    enabled: boolean,
+  ) => Promise<{ ok: boolean; error?: string }>;
   listTerminalTargets: () => Promise<Array<{
     id: string;
     label: string;
@@ -482,8 +485,94 @@ function WindowsTerminalPane() {
   );
 }
 
+function Switch({
+  checked,
+  onChange,
+}: {
+  checked: boolean;
+  onChange: (next: boolean) => void;
+}) {
+  return (
+    <button
+      type="button"
+      role="switch"
+      aria-checked={checked}
+      onClick={() => onChange(!checked)}
+      className="relative inline-flex h-5 w-9 shrink-0 items-center rounded-full transition-colors cursor-pointer"
+      style={{
+        backgroundColor: checked
+          ? "var(--accent)"
+          : "color-mix(in srgb, var(--foreground) 18%, transparent)",
+      }}
+    >
+      <span
+        className="inline-block h-4 w-4 rounded-full transition-transform"
+        style={{
+          backgroundColor: "var(--background)",
+          transform: `translateX(${checked ? 18 : 2}px)`,
+        }}
+      />
+    </button>
+  );
+}
+
+function NativeContextSection() {
+  const [enabled, setEnabled] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    api.getPref("nativeContextProbe")
+      .then((v) => setEnabled(v === true))
+      .catch(() => {});
+  }, []);
+
+  async function toggle(next: boolean) {
+    setBusy(true);
+    setError(null);
+    setEnabled(next);
+    try {
+      const result = await api.setNativeContext(next);
+      if (!result.ok) {
+        setError(result.error ?? "Failed to update Claude settings");
+        setEnabled(!next);
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : String(err));
+      setEnabled(!next);
+    }
+    setBusy(false);
+  }
+
+  return (
+    <div className="space-y-3 px-6 pb-6">
+      <div className="flex items-start justify-between gap-4">
+        <div className="space-y-0.5">
+          <p className="text-sm font-medium">Native context detection</p>
+          <p className="text-xs text-muted-foreground">
+            Registers a Claude Code statusline to read exact model and context
+            window usage. Chains to an existing statusline if present. Restart
+            Claude Code sessions after enabling.
+          </p>
+        </div>
+        <div className={busy ? "opacity-50 pointer-events-none" : ""}>
+          <Switch checked={enabled} onChange={(n) => { void toggle(n); }} />
+        </div>
+      </div>
+      {error && (
+        <p className="text-xs" style={{ color: "#ef4444" }}>{error}</p>
+      )}
+    </div>
+  );
+}
+
 function TerminalPane() {
-  return IS_MAC ? <MacTerminalPane /> : <WindowsTerminalPane />;
+  return (
+    <>
+      {IS_MAC ? <MacTerminalPane /> : <WindowsTerminalPane />}
+      <NativeContextSection />
+    </>
+  );
 }
 
 function ControlsPane() {

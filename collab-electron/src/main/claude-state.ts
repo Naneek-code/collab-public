@@ -12,6 +12,7 @@ import { homedir } from "node:os";
 import { type BrowserWindow } from "electron";
 import { ipcMain } from "electron";
 import { COLLAB_DIR } from "./paths";
+import { PROBE_STATE_DIR } from "./claude-statusline";
 import { getBinding, getTileIdBySession } from "./agent-resume";
 import { listLiveSidecarSessions } from "./pty";
 import { showOverlayNotification } from "./notification-overlay";
@@ -21,6 +22,62 @@ export interface ClaudeStructuredState {
   mode?: string;
   permissionMode?: string;
   status?: string;
+  contextTokens?: number;
+  defaultModel?: string;
+  contextWindowSize?: number;
+  usedPercentage?: number;
+}
+
+function usageTokens(usage: unknown): number | undefined {
+  if (!usage || typeof usage !== "object") return undefined;
+  const u = usage as Record<string, number>;
+  const sum =
+    (u.input_tokens ?? 0) +
+    (u.cache_read_input_tokens ?? 0) +
+    (u.cache_creation_input_tokens ?? 0);
+  return sum > 0 ? sum : undefined;
+}
+
+// Native data from the statusline probe (when enabled): authoritative model id
+// and exact context window size + used percentage. Overrides transcript guesses.
+function readProbeState(session: TrackedSession): boolean {
+  const file = join(PROBE_STATE_DIR, `${session.agentSessionId}.json`);
+  let data: Record<string, unknown>;
+  try {
+    data = JSON.parse(readFileSync(file, "utf8"));
+  } catch {
+    return false;
+  }
+  let changed = false;
+  const set = <K extends keyof ClaudeStructuredState>(
+    key: K,
+    value: ClaudeStructuredState[K] | undefined,
+  ) => {
+    if (value != null && value !== session.state[key]) {
+      session.state[key] = value;
+      changed = true;
+    }
+  };
+
+  const model = data.model as { id?: string } | undefined;
+  set("model", typeof model?.id === "string" ? model.id : undefined);
+
+  const cw = data.context_window as Record<string, unknown> | undefined;
+  if (cw) {
+    set(
+      "contextWindowSize",
+      typeof cw.context_window_size === "number" ? cw.context_window_size : undefined,
+    );
+    set(
+      "usedPercentage",
+      typeof cw.used_percentage === "number" ? cw.used_percentage : undefined,
+    );
+    set(
+      "contextTokens",
+      typeof cw.total_input_tokens === "number" ? cw.total_input_tokens : undefined,
+    );
+  }
+  return changed;
 }
 
 const CLAUDE_DIR = join(homedir(), ".claude");
@@ -29,6 +86,17 @@ const PROJECTS_DIR = join(CLAUDE_DIR, "projects");
 const BINDINGS_DIR = join(COLLAB_DIR, "agent-bindings");
 
 const POLL_MS = 800;
+const SETTINGS_FILE = join(CLAUDE_DIR, "settings.json");
+
+function readDefaultModel(): string | undefined {
+  try {
+    const raw = readFileSync(SETTINGS_FILE, "utf8");
+    const model = JSON.parse(raw)?.model;
+    return typeof model === "string" && model ? model : undefined;
+  } catch {
+    return undefined;
+  }
+}
 
 function cwdToSlug(cwd: string): string {
   return cwd.replace(/[^a-zA-Z0-9-]/g, "-");
@@ -135,6 +203,13 @@ function readNewTranscriptLines(session: TrackedSession): void {
         session.state.model = entry.message.model;
         changed = true;
       }
+      if (entry.message?.role === "assistant" && entry.message?.usage) {
+        const tokens = usageTokens(entry.message.usage);
+        if (tokens != null && tokens !== session.state.contextTokens) {
+          session.state.contextTokens = tokens;
+          changed = true;
+        }
+      }
     } catch {}
   }
   if (changed) sendState(session.ptySessionId, session.state);
@@ -189,11 +264,19 @@ function initTranscriptState(session: TrackedSession): void {
         ) {
           session.state.model = entry.message.model;
         }
+        if (
+          session.state.contextTokens == null &&
+          entry.message?.role === "assistant"
+        ) {
+          const tokens = usageTokens(entry.message.usage);
+          if (tokens != null) session.state.contextTokens = tokens;
+        }
       } catch {}
       if (
         session.state.mode &&
         session.state.model &&
-        session.state.permissionMode
+        session.state.permissionMode &&
+        session.state.contextTokens != null
       ) {
         break;
       }
@@ -276,6 +359,18 @@ async function pollAll(): Promise<void> {
     }
     readNewTranscriptLines(session);
     readSessionStatus(session);
+    if (readProbeState(session)) sendState(session.ptySessionId, session.state);
+    const def = readDefaultModel();
+    let changed = false;
+    if (def && def !== session.state.defaultModel) {
+      session.state.defaultModel = def;
+      changed = true;
+    }
+    if (!session.state.model && def) {
+      session.state.model = def;
+      changed = true;
+    }
+    if (changed) sendState(session.ptySessionId, session.state);
   }
 }
 

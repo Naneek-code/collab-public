@@ -32,6 +32,7 @@ import { registerCanvasRpc } from "./canvas-rpc";
 import { registerIntegrationsIpc } from "./integrations";
 import { initAgentResume, registerAgentResumeIpc } from "./agent-resume";
 import { initClaudeState } from "./claude-state";
+import { refreshProbe, enableProbe, disableProbe } from "./claude-statusline";
 import {
   registerMethod,
   startJsonRpcServer,
@@ -614,6 +615,18 @@ ipcMain.handle(
 );
 
 ipcMain.handle(
+  "native-context:set",
+  (_event, enabled: boolean) => {
+    setPref(config, "nativeContextProbe", enabled);
+    const result = enabled ? enableProbe() : disableProbe();
+    if (mainWindow && !mainWindow.isDestroyed()) {
+      mainWindow.webContents.send("pref:changed", "nativeContextProbe", enabled);
+    }
+    return result;
+  },
+);
+
+ipcMain.handle(
   "terminal:list-targets",
   () => listTerminalTargets(),
 );
@@ -906,6 +919,7 @@ app.whenReady().then(async () => {
 
   config = loadConfig();
   installCli();
+  refreshProbe(getPref(config, "nativeContextProbe") === true);
   watcher.startWorker();
   registerIpcHandlers(config);
   registerBrowserIpc();

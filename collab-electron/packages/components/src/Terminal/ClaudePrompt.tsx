@@ -167,8 +167,9 @@ function modeKey(mode: string): string {
 }
 
 const PERMISSION_MODE_LABELS: Record<string, string> = {
-  auto: "normal",
+  auto: "auto",
   default: "normal",
+  normal: "normal",
   plan: "plan",
   acceptedits: "accept edits",
   bypasspermissions: "bypass permissions",
@@ -495,6 +496,14 @@ const ClaudePrompt = React.memo(({ sessionId, term }: ClaudePromptProps) => {
     mode?: string;
     permissionMode?: string;
     status?: string;
+    contextTokens?: number;
+    defaultModel?: string;
+    contextWindowSize?: number;
+    usedPercentage?: number;
+  } | null>(null);
+  const [terminalModel, setTerminalModel] = React.useState<{
+    model: string;
+    contextInfo?: string;
   } | null>(null);
 
   const editorRef = React.useRef<HTMLDivElement>(null);
@@ -593,12 +602,20 @@ const ClaudePrompt = React.memo(({ sessionId, term }: ClaudePromptProps) => {
       mode?: string;
       permissionMode?: string;
       status?: string;
+      contextTokens?: number;
+      defaultModel?: string;
+      contextWindowSize?: number;
+      usedPercentage?: number;
     }) => {
       setStructuredState({
         model: state.model,
         mode: state.mode,
         permissionMode: state.permissionMode,
         status: state.status,
+        contextTokens: state.contextTokens,
+        defaultModel: state.defaultModel,
+        contextWindowSize: state.contextWindowSize,
+        usedPercentage: state.usedPercentage,
       });
     };
     window.api.onClaudeState(sessionId, cb);
@@ -726,6 +743,52 @@ const ClaudePrompt = React.memo(({ sessionId, term }: ClaudePromptProps) => {
       for (let i = readStart; i < bufLen; i++) {
         const line = buf.getLine(i);
         rows.push(line ? line.translateToString(true) : "");
+      }
+
+      // The model lines (`Set model to …`, startup banner) can sit anywhere on
+      // screen — near the top on a sparse session — so scan a wider window than
+      // the 2-row status footer below.
+      const modelStart = Math.max(0, bufLen - 60);
+      const modelRows: string[] = [];
+      for (let i = modelStart; i < bufLen; i++) {
+        const line = buf.getLine(i);
+        modelRows.push(line ? line.translateToString(true) : "");
+      }
+
+      let switchSeen = false;
+      for (let i = modelRows.length - 1; i >= 0; i--) {
+        const m = modelRows[i]?.match(/Set model to (.+?)\s+and saved/i);
+        if (m?.[1]) {
+          const raw = m[1].trim();
+          const ctx = raw.match(/\(([^)]+)\)/)?.[1];
+          const name = raw.replace(/\s*\([^)]*\)\s*/, "").trim();
+          setTerminalModel({
+            model: name,
+            ...(ctx ? { contextInfo: ctx } : {}),
+          });
+          switchSeen = true;
+          break;
+        }
+      }
+
+      // Startup banner (`Claude Code vX` then `Opus 4.8 (1M context) with …`)
+      // gives the model before any reply exists. Fill only if nothing latched.
+      if (!switchSeen) {
+        for (let i = 0; i < modelRows.length - 1; i++) {
+          if (!/Claude Code v\d/i.test(modelRows[i] ?? "")) continue;
+          const banner = modelRows[i + 1] ?? "";
+          const bm = banner.match(/\b(Opus|Sonnet|Haiku)\s+[\d.]+/i);
+          if (bm) {
+            const ctx = banner.match(/\(([^)]*context[^)]*)\)/i)?.[1];
+            setTerminalModel((prev) =>
+              prev ?? {
+                model: bm[0].trim(),
+                ...(ctx ? { contextInfo: ctx.trim() } : {}),
+              },
+            );
+          }
+          break;
+        }
       }
 
       const isInputBoxBottom = (s: string) => s.includes("╰") && s.includes("╯");
@@ -1317,18 +1380,82 @@ const ClaudePrompt = React.memo(({ sessionId, term }: ClaudePromptProps) => {
     [sendDraft],
   );
 
+  const currentModelId = React.useMemo(() => {
+    if (terminalModel) {
+      const t = terminalModel.model.toLowerCase();
+      const oneM = /1m/i.test(terminalModel.contextInfo ?? "");
+      if (t.includes("sonnet")) return "sonnet";
+      const m = t.match(/opus\s*(\d)[.\s-]?(\d)/);
+      if (m) return `claude-opus-${m[1]}-${m[2]}${oneM ? "[1m]" : ""}`;
+    }
+    const base = matchQuickSwitchId(structuredState?.model);
+    if (
+      base &&
+      base !== "sonnet" &&
+      !base.includes("[1m]") &&
+      (structuredState?.contextWindowSize ?? 0) >= 1_000_000
+    ) {
+      return `${base}[1m]`;
+    }
+    return base;
+  }, [terminalModel, structuredState?.model, structuredState?.contextWindowSize]);
+
+  const is1M = React.useMemo(() => {
+    if (structuredState?.contextWindowSize != null) {
+      return structuredState.contextWindowSize >= 1_000_000;
+    }
+    if (terminalModel) return /1m/i.test(terminalModel.contextInfo ?? "");
+    if (/\[1m\]/i.test(structuredState?.model ?? "")) return true;
+    if (/1m/i.test(parseStatusLines(statusLines).contextInfo ?? "")) return true;
+    return /\[1m\]/i.test(structuredState?.defaultModel ?? "");
+  }, [
+    terminalModel,
+    structuredState?.model,
+    structuredState?.defaultModel,
+    structuredState?.contextWindowSize,
+    statusLines,
+  ]);
+
   const parsedStatus = React.useMemo(() => {
     const scraped = parseStatusLines(statusLines);
-    if (!structuredState) return scraped;
-    const fromFiles = prettyModel(structuredState.model);
-    const mode = prettyMode(structuredState.permissionMode) ?? scraped.mode;
-    return {
-      ...scraped,
-      model: fromFiles.model ?? scraped.model,
-      contextInfo: fromFiles.contextInfo ?? scraped.contextInfo,
-      mode,
-    };
-  }, [statusLines, structuredState]);
+    const fromFiles = prettyModel(structuredState?.model);
+    // model + context come as a unit from one source — never mix a model name
+    // from one with a context tag from another (a stale default leaks 1M).
+    const model = terminalModel
+      ? terminalModel.model
+      : (fromFiles.model ?? scraped.model);
+    const contextInfo = terminalModel
+      ? terminalModel.contextInfo
+      : (fromFiles.contextInfo ?? scraped.contextInfo);
+    const base =
+      structuredState || terminalModel
+        ? {
+            ...scraped,
+            ...(model ? { model } : {}),
+            ...(contextInfo ? { contextInfo } : {}),
+            mode: prettyMode(structuredState?.permissionMode) ?? scraped.mode,
+          }
+        : scraped;
+    if (base.progress == null && structuredState?.usedPercentage != null) {
+      return {
+        ...base,
+        progress: Math.min(100, Math.round(structuredState.usedPercentage)),
+        contextInfo: base.contextInfo ?? (is1M ? "1M" : "200k"),
+      };
+    }
+    if (base.progress == null && structuredState?.contextTokens != null) {
+      const windowSize = is1M ? 1_000_000 : 200_000;
+      return {
+        ...base,
+        progress: Math.min(
+          100,
+          Math.round((structuredState.contextTokens / windowSize) * 100),
+        ),
+        contextInfo: base.contextInfo ?? (is1M ? "1M" : "200k"),
+      };
+    }
+    return base;
+  }, [statusLines, structuredState, terminalModel, is1M]);
   const hasStatus =
     parsedStatus.model != null ||
     parsedStatus.mode != null ||
@@ -1399,9 +1526,8 @@ const ClaudePrompt = React.memo(({ sessionId, term }: ClaudePromptProps) => {
                 title="Switch model"
                 onClick={() => setModelMenuOpen((o) => !o)}
               >
-                {MODEL_QUICK_SWITCHES.find(
-                  (m) => m.id === matchQuickSwitchId(structuredState?.model),
-                )?.title ?? "Model"}
+                {MODEL_QUICK_SWITCHES.find((m) => m.id === currentModelId)
+                  ?.title ?? "Model"}
                 <ChevronDown size={11} />
               </button>
               {modelMenuOpen && (
@@ -1411,9 +1537,7 @@ const ClaudePrompt = React.memo(({ sessionId, term }: ClaudePromptProps) => {
                       type="button"
                       key={m.id}
                       className={`claude-prompt-model-item${
-                        m.id === matchQuickSwitchId(structuredState?.model)
-                          ? " is-active"
-                          : ""
+                        m.id === currentModelId ? " is-active" : ""
                       }`}
                       onClick={() => {
                         handleModelSwitch(m.id);

@@ -170,6 +170,8 @@ contextBridge.exposeInMainWorld("api", {
   getPref: (key: string) => ipcRenderer.invoke("pref:get", key),
   setPref: (key: string, value: unknown) =>
     ipcRenderer.invoke("pref:set", key, value),
+  setNativeContext: (enabled: boolean) =>
+    ipcRenderer.invoke("native-context:set", enabled),
   listTerminalTargets: () =>
     ipcRenderer.invoke("terminal:list-targets"),
   getWorkspacePref: (key: string, workspacePath: string) =>
