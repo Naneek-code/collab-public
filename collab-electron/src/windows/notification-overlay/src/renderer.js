@@ -1,5 +1,9 @@
-const DISMISS_MS = 8000;
-const MAX_TOASTS = 3;
+const MAX_TOASTS = 20;
+const PAD = 14;
+const GAP = 10;
+const PEEK_OFFSET = 12;
+const PEEK_SCALE = 0.05;
+const MAX_PEEK = 3;
 
 const soundCache = {};
 
@@ -19,57 +23,101 @@ const container = document.getElementById("toast-container");
 const toasts = new Map();
 
 let isDark = false;
+let expanded = false;
 
 function applyTheme(dark) {
 	isDark = dark;
 	document.documentElement.classList.toggle("dark", dark);
 }
 
-function reportSize() {
+function reportSize(height) {
 	const empty = toasts.size === 0;
-	const height = empty
-		? 0
-		: Math.ceil(container.getBoundingClientRect().height);
-	window.notifApi.resize({ height, empty });
+	window.notifApi.resize({
+		height: empty ? 0 : Math.max(Math.ceil(height), 56),
+		empty,
+	});
 }
 
-const resizeObserver = new ResizeObserver(() => reportSize());
-resizeObserver.observe(container);
+// All cards are absolutely positioned from the bottom. Collapsed = a deck with
+// the newest card in front and older ones peeking behind it. Expanded (hover) =
+// the full list fanned out upward. layout() also reports the content height so
+// the window resizes to wrap exactly what's visible.
+function layout() {
+	const items = [...toasts.values()];
+	const n = items.length;
+	if (n === 0) {
+		reportSize(0);
+		return;
+	}
+
+	if (expanded) {
+		let offset = PAD;
+		for (let i = n - 1; i >= 0; i--) {
+			const el = items[i];
+			el.style.bottom = `${offset}px`;
+			el.style.transform = "translateY(0) scale(1)";
+			el.style.opacity = "1";
+			el.style.zIndex = String(i + 1);
+			el.style.pointerEvents = "auto";
+			offset += el.offsetHeight + GAP;
+		}
+		reportSize(offset - GAP + PAD);
+	} else {
+		const front = items[n - 1];
+		for (let i = 0; i < n; i++) {
+			const el = items[i];
+			const depth = Math.min(n - 1 - i, MAX_PEEK + 1);
+			el.style.bottom = `${PAD}px`;
+			el.style.transform =
+				`translateY(${-depth * PEEK_OFFSET}px) scale(${1 - depth * PEEK_SCALE})`;
+			el.style.opacity = depth > MAX_PEEK ? "0" : "1";
+			el.style.zIndex = String(n - depth);
+			el.style.pointerEvents = depth === 0 ? "auto" : "none";
+		}
+		const peek = Math.min(n - 1, MAX_PEEK) * PEEK_OFFSET;
+		reportSize(PAD + front.offsetHeight + peek + PAD);
+	}
+}
+
+container.addEventListener("mouseenter", () => {
+	expanded = true;
+	layout();
+});
+container.addEventListener("mouseleave", () => {
+	expanded = false;
+	layout();
+});
 
 function dismissToast(id) {
 	const el = toasts.get(id);
 	if (!el) return;
-	el.classList.add("toast-exit");
-	el.addEventListener("animationend", () => {
+	toasts.delete(id);
+	el.style.pointerEvents = "none";
+	el.style.opacity = "0";
+	el.style.transform = `${el.style.transform} translateX(40px)`;
+	const done = () => {
 		el.remove();
-		toasts.delete(id);
-		reportSize();
-	}, { once: true });
+		layout();
+	};
+	el.addEventListener("transitionend", done, { once: true });
+	setTimeout(done, 320);
+	layout();
 }
 
-function showToast({ id, title, body, tileId, cwd, sound }) {
-	if (toasts.has(id)) {
-		dismissToast(id);
-	}
-
-	while (toasts.size >= MAX_TOASTS) {
-		const oldest = toasts.keys().next().value;
-		dismissToast(oldest);
-	}
-
+function buildToast({ id, title, body, tileId, cwd }) {
 	const el = document.createElement("div");
 	el.className = "toast-item";
 	el.dataset.id = id;
 	if (tileId) el.dataset.tileId = tileId;
 	if (cwd) el.dataset.cwd = cwd;
 
-	const titleEl = document.createElement("div");
-	titleEl.className = "toast-title";
-	titleEl.textContent = title || "Notification";
+	const iconEl = document.createElement("div");
+	iconEl.className = "toast-icon";
+	iconEl.innerHTML = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2z"/><path d="M8 12l3 3 5-6"/></svg>`;
 
-	const bodyEl = document.createElement("div");
-	bodyEl.className = "toast-body";
-	bodyEl.textContent = body || "";
+	const appLabel = document.createElement("span");
+	appLabel.className = "toast-app";
+	appLabel.textContent = "Collaborator";
 
 	const closeBtn = document.createElement("button");
 	closeBtn.className = "toast-close";
@@ -81,48 +129,64 @@ function showToast({ id, title, body, tileId, cwd, sound }) {
 
 	const headerRow = document.createElement("div");
 	headerRow.className = "toast-header";
-
-	const iconEl = document.createElement("div");
-	iconEl.className = "toast-icon";
-	iconEl.innerHTML = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2z"/><path d="M8 12l3 3 5-6"/></svg>`;
-
-	const appLabel = document.createElement("span");
-	appLabel.className = "toast-app";
-	appLabel.textContent = "Collaborator";
-
 	headerRow.appendChild(iconEl);
 	headerRow.appendChild(appLabel);
 	headerRow.appendChild(closeBtn);
 
+	const titleEl = document.createElement("div");
+	titleEl.className = "toast-title";
+	titleEl.textContent = title || "Notification";
+
 	el.appendChild(headerRow);
 	el.appendChild(titleEl);
-	if (body) el.appendChild(bodyEl);
+	if (body) {
+		const bodyEl = document.createElement("div");
+		bodyEl.className = "toast-body";
+		bodyEl.textContent = body;
+		el.appendChild(bodyEl);
+	}
 
 	el.style.cursor = (tileId || cwd) ? "pointer" : "default";
-	el.addEventListener("click", () => {
+	el.addEventListener("click", (e) => {
+		if (e.target.closest(".toast-close")) return;
 		window.notifApi.notificationClicked({ tileId, cwd });
 		dismissToast(id);
 	});
 
+	return el;
+}
+
+function showToast(data) {
+	if (toasts.has(data.id)) return;
+
+	while (toasts.size >= MAX_TOASTS) {
+		const oldest = toasts.keys().next().value;
+		const el = toasts.get(oldest);
+		toasts.delete(oldest);
+		if (el) el.remove();
+	}
+
+	const el = buildToast(data);
+	el.style.opacity = "0";
+	el.style.transform = "translateX(40px)";
 	container.appendChild(el);
-	requestAnimationFrame(() => el.classList.add("toast-enter"));
-	// Fallback: if rAF is throttled, force the toast visible anyway.
-	setTimeout(() => el.classList.add("toast-enter"), 50);
+	toasts.set(data.id, el);
 
-	if (sound) playNotifSound(sound);
+	if (data.sound) playNotifSound(data.sound);
 
-	toasts.set(id, el);
-	reportSize();
-
-	setTimeout(() => {
-		if (toasts.has(id)) dismissToast(id);
-	}, DISMISS_MS);
+	requestAnimationFrame(layout);
 }
 
 window.notifApi.onNotification(showToast);
-window.notifApi.onDismiss(({ tileId }) => {
+function normCwd(c) {
+	return c ? c.replace(/\\/g, "/").toLowerCase() : "";
+}
+window.notifApi.onDismiss(({ tileId, cwd }) => {
+	const target = normCwd(cwd);
 	for (const [id, el] of toasts) {
-		if (el.dataset.tileId === tileId) dismissToast(id);
+		const tileMatch = tileId && el.dataset.tileId === tileId;
+		const cwdMatch = target && normCwd(el.dataset.cwd) === target;
+		if (tileMatch || cwdMatch) dismissToast(id);
 	}
 });
 window.notifApi.onTheme(applyTheme);
@@ -163,43 +227,32 @@ html, body {
 
 #toast-container {
 	position: fixed;
-	bottom: 0;
-	right: 0;
-	width: 100%;
-	display: flex;
-	flex-direction: column-reverse;
-	gap: 8px;
-	padding: 12px;
+	inset: 0;
 }
 
 .toast-item {
-	width: 100%;
-	padding: 16px 18px 14px;
+	position: absolute;
+	right: ${PAD}px;
+	width: calc(100% - ${PAD * 2}px);
+	padding: 14px 16px 13px;
 	background: var(--bg);
 	border: 1px solid var(--border);
 	border-radius: var(--radius);
 	box-shadow: var(--shadow);
 	color: var(--fg);
-	position: relative;
-	opacity: 0;
-	transform: translateX(40px);
-	transition: opacity 0.25s ease, transform 0.3s cubic-bezier(0.16, 1, 0.3, 1);
-}
-
-.toast-item.toast-enter {
-	opacity: 1;
-	transform: translateX(0);
-}
-
-.toast-item.toast-exit {
-	animation: toast-out 0.2s ease forwards;
+	transform-origin: bottom center;
+	transition:
+		transform 0.26s cubic-bezier(0.16, 1, 0.3, 1),
+		bottom 0.26s cubic-bezier(0.16, 1, 0.3, 1),
+		opacity 0.2s ease;
+	will-change: transform, bottom, opacity;
 }
 
 .toast-header {
 	display: flex;
 	align-items: center;
 	gap: 8px;
-	margin-bottom: 10px;
+	margin-bottom: 8px;
 }
 
 .toast-icon {
@@ -211,10 +264,7 @@ html, body {
 	align-items: center;
 }
 
-.toast-icon svg {
-	width: 16px;
-	height: 16px;
-}
+.toast-icon svg { width: 16px; height: 16px; }
 
 .toast-app {
 	font-size: 12px;
@@ -256,11 +306,6 @@ html, body {
 .toast-close:hover {
 	color: var(--fg);
 	background: rgba(128, 128, 128, 0.15);
-}
-
-@keyframes toast-out {
-	from { opacity: 1; transform: translateX(0); }
-	to   { opacity: 0; transform: translateX(40px); }
 }
 `;
 document.head.appendChild(style);
