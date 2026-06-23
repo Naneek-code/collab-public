@@ -176,7 +176,7 @@ function sendShortcut(action: string): void {
 }
 
 const cmdOrCtrl = (input: Electron.Input): boolean =>
-  input.meta || input.control;
+  (input.meta || input.control) && !input.alt;
 const shiftCmdOrCtrl = (input: Electron.Input): boolean =>
   input.shift && (input.meta || input.control);
 const altCmdOrCtrl = (input: Electron.Input): boolean =>
