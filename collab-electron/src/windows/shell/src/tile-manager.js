@@ -30,6 +30,8 @@ export function createTileManager({
 	onTileDblClick,
 	onReposition,
 	getFrames = () => [],
+	getFrameForTile = () => null,
+	onFocusChange = () => {},
 }) {
 	/** @type {Map<string, {container: HTMLElement, contentArea: HTMLElement, titleText: HTMLElement, webview?: HTMLElement}>} */
 	const tileDOMs = new Map();
@@ -141,6 +143,7 @@ export function createTileManager({
 		for (const [, d] of tileDOMs) {
 			d.container.classList.remove("tile-focused");
 		}
+		onFocusChange();
 	}
 
 	function blurCanvasTileGuest(id = focusedTileId) {
@@ -196,6 +199,7 @@ export function createTileManager({
 			}
 			clearTileFocusRing();
 			dom.container.classList.add("tile-focused");
+			onFocusChange();
 			dom.webview.focus();
 			onNoteSurfaceFocus("canvas-tile");
 
@@ -622,7 +626,9 @@ export function createTileManager({
 				if (t.type === "term" && onTerminalTileResized) {
 					onTerminalTileResized(t.width, t.height);
 				}
+				saveCanvasDebounced();
 			},
+			getFrameForTile,
 		);
 
 		tileLayer.appendChild(dom.container);

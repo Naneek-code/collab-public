@@ -1609,20 +1609,51 @@ body.titlebar-collapsed #titlebar {
 	position: absolute;
 	transform-origin: top left;
 	box-sizing: border-box;
+	background: color-mix(in srgb, var(--frame-color, #6b7280) 8%, transparent);
+	border-radius: 8px;
+	pointer-events: none;
+}
+
+.canvas-frame::before {
+	content: "";
+	position: absolute;
+	inset: 0;
 	border: 2px solid var(--frame-color, #6b7280);
 	border-radius: 8px;
-	background: color-mix(in srgb, var(--frame-color, #6b7280) 8%, transparent);
+	box-shadow:
+		0 0 4px 0 var(--frame-color, #6b7280),
+		0 0 9px 1px color-mix(in srgb, var(--frame-color, #6b7280) 55%, transparent);
+	filter: brightness(1.6) saturate(1.2);
 	pointer-events: none;
+	transition: box-shadow 120ms ease-out, filter 120ms ease-out;
 }
 
 .canvas-frame.frame-dragging {
 	opacity: 0.85;
 }
 
+.frame-header-layer {
+	position: absolute;
+	inset: 0;
+	overflow: hidden;
+	pointer-events: none;
+	z-index: 104;
+}
+
+.canvas-frame:has(.tile-resize-handle:hover)::before,
+.canvas-frame.frame-hover::before {
+	filter: brightness(2) saturate(1.4);
+	box-shadow:
+		0 0 5px 1px var(--frame-color, #6b7280),
+		0 0 12px 2px var(--frame-color, #6b7280),
+		0 0 22px 5px color-mix(in srgb, var(--frame-color, #6b7280) 60%, transparent);
+}
+
 .frame-title-bar {
 	position: absolute;
 	top: -28px;
 	left: 0;
+	transform-origin: top left;
 	max-width: 100%;
 	height: 24px;
 	display: flex;
@@ -1693,4 +1724,48 @@ body.titlebar-collapsed #titlebar {
 
 .canvas-frame .tile-resize-handle {
 	pointer-events: auto;
+}
+
+/* Frame edges coincide with tile edges (no padding); the tile renders above
+   the frame, so push the frame's handles outward onto the empty margin past
+   the tile's own handle reach. Keeps frame-resize from grabbing the tile. */
+.canvas-frame .tile-resize-handle.edge-e {
+	right: -12px;
+	left: auto;
+	width: 10px;
+}
+.canvas-frame .tile-resize-handle.edge-w {
+	left: -12px;
+	right: auto;
+	width: 10px;
+}
+.canvas-frame .tile-resize-handle.edge-n {
+	top: -12px;
+	bottom: auto;
+	height: 10px;
+}
+.canvas-frame .tile-resize-handle.edge-s {
+	bottom: -12px;
+	top: auto;
+	height: 10px;
+}
+.canvas-frame .tile-resize-handle.corner-nw {
+	top: -12px;
+	left: -12px;
+}
+.canvas-frame .tile-resize-handle.corner-ne {
+	top: -12px;
+	right: -12px;
+	left: auto;
+}
+.canvas-frame .tile-resize-handle.corner-sw {
+	bottom: -12px;
+	left: -12px;
+	top: auto;
+}
+.canvas-frame .tile-resize-handle.corner-se {
+	bottom: -12px;
+	right: -12px;
+	top: auto;
+	left: auto;
 }

@@ -671,6 +671,8 @@ async function init() {
 		tileLayer, viewportState, configs,
 		getAllWebviews,
 		getFrames: () => frameManager?.getFramesForSave() ?? [],
+		getFrameForTile: (tile) => frameManager?.getFrameForTile(tile) ?? null,
+		onFocusChange: () => frameManager?.updateHeaderStacking(),
 		isSpaceHeld: () => spaceHeld,
 		onReposition: () => { viewport.redrawGrid(); minimapRef?.update(); },
 		onSaveDebounced(state) {

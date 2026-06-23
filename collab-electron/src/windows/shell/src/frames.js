@@ -28,15 +28,67 @@ export function createFrameManager({
 	/** @type {Frame[]} */
 	const frames = [];
 	const frameDOMs = new Map();
+	const frameBars = new Map();
 	let idCounter = 0;
 	const genId = () => `frame-${Date.now()}-${++idCounter}`;
 
+	const headerLayer = document.createElement("div");
+	headerLayer.className = "frame-header-layer";
+	frameLayer.parentNode.appendChild(headerLayer);
+
 	function positionFrame(el, f) {
-		el.style.left = `${f.x * viewportState.zoom + viewportState.panX}px`;
-		el.style.top = `${f.y * viewportState.zoom + viewportState.panY}px`;
+		const z = viewportState.zoom;
+		el.style.left = `${f.x * z + viewportState.panX}px`;
+		el.style.top = `${f.y * z + viewportState.panY}px`;
 		el.style.width = `${f.width}px`;
 		el.style.height = `${f.height}px`;
-		el.style.transform = `scale(${viewportState.zoom})`;
+		el.style.transform = `scale(${z})`;
+		const bar = frameBars.get(f.id);
+		if (bar && bar.parentNode === headerLayer) {
+			bar.style.left = `${f.x * z + viewportState.panX}px`;
+			bar.style.top = `${f.y * z + viewportState.panY - 28 * z}px`;
+			bar.style.transform = `scale(${z})`;
+		}
+	}
+
+	function getFocusedTileId() {
+		for (const [id, dom] of getTileDOMs()) {
+			if (dom.container.classList.contains("tile-focused")) return id;
+		}
+		return null;
+	}
+
+	function rectsOverlap(a, b) {
+		return a.left < b.right && a.right > b.left &&
+			a.top < b.bottom && a.bottom > b.top;
+	}
+
+	function updateHeaderStacking() {
+		const fid = getFocusedTileId();
+		const focusedDom = fid != null ? getTileDOMs().get(fid) : null;
+		for (const f of frames) {
+			const bar = frameBars.get(f.id);
+			const el = frameDOMs.get(f.id);
+			if (!bar || !el) continue;
+			const outside = fid != null &&
+				!containedTiles(f).some((t) => t.id === fid);
+			const recede = outside && focusedDom &&
+				rectsOverlap(
+					bar.getBoundingClientRect(),
+					focusedDom.container.getBoundingClientRect(),
+				);
+			if (recede) {
+				if (bar.parentNode !== el) {
+					bar.style.left = "";
+					bar.style.top = "";
+					bar.style.transform = "";
+					el.appendChild(bar);
+				}
+			} else if (bar.parentNode !== headerLayer) {
+				headerLayer.appendChild(bar);
+				positionFrame(el, f);
+			}
+		}
 	}
 
 	function repositionAllFrames() {
@@ -53,6 +105,14 @@ export function createFrameManager({
 			return cx >= f.x && cx <= f.x + f.width &&
 				cy >= f.y && cy <= f.y + f.height;
 		});
+	}
+
+	function getFrameForTile(tile) {
+		const cx = tile.x + tile.width / 2;
+		const cy = tile.y + tile.height / 2;
+		return frames.find((f) =>
+			cx >= f.x && cx <= f.x + f.width &&
+			cy >= f.y && cy <= f.y + f.height) || null;
 	}
 
 	function repositionTiles(ts) {
@@ -203,6 +263,9 @@ export function createFrameManager({
 
 		const bar = document.createElement("div");
 		bar.className = "frame-title-bar";
+		bar.style.setProperty("--frame-color", f.color);
+		bar.addEventListener("mouseenter", () => el.classList.add("frame-hover"));
+		bar.addEventListener("mouseleave", () => el.classList.remove("frame-hover"));
 
 		const title = document.createElement("span");
 		title.className = "frame-title-text";
@@ -228,6 +291,7 @@ export function createFrameManager({
 		colorInput.addEventListener("input", () => {
 			f.color = colorInput.value;
 			el.style.setProperty("--frame-color", f.color);
+			bar.style.setProperty("--frame-color", f.color);
 		});
 		colorInput.addEventListener("change", () => onSave());
 
@@ -245,13 +309,14 @@ export function createFrameManager({
 		bar.appendChild(colorBtn);
 		bar.appendChild(colorInput);
 		bar.appendChild(delBtn);
-		el.appendChild(bar);
+		headerLayer.appendChild(bar);
 
 		attachDrag(bar, f, el);
 		attachResize(el, f);
 
 		frameLayer.appendChild(el);
 		frameDOMs.set(f.id, el);
+		frameBars.set(f.id, bar);
 		positionFrame(el, f);
 		return el;
 	}
@@ -277,11 +342,16 @@ export function createFrameManager({
 		const el = frameDOMs.get(id);
 		if (el) el.remove();
 		frameDOMs.delete(id);
+		const bar = frameBars.get(id);
+		if (bar) bar.remove();
+		frameBars.delete(id);
 	}
 
 	function detachAllFrames() {
 		for (const [, el] of frameDOMs) el.remove();
 		frameDOMs.clear();
+		for (const [, bar] of frameBars) bar.remove();
+		frameBars.clear();
 		frames.length = 0;
 	}
 
@@ -304,6 +374,7 @@ export function createFrameManager({
 
 	return {
 		createFrame, removeFrame, restoreFrames, detachAllFrames,
-		getFramesForSave, repositionAllFrames,
+		getFramesForSave, repositionAllFrames, getFrameForTile,
+		updateHeaderStacking,
 	};
 }

@@ -295,7 +295,7 @@ export function attachMarquee(canvasEl, {
  */
 export function attachResize(
   container, tile, viewport, onUpdate, getAllWebviews, onFocus,
-  onResizeEnd,
+  onResizeEnd, getFrameForTile,
 ) {
   const edges = ["n", "s", "e", "w"];
   const corners = ["nw", "ne", "sw", "se"];
@@ -329,16 +329,22 @@ export function attachResize(
       const chainStart = new Map();
       for (const side of ["e", "w", "s", "n"]) {
         for (const o of chains[side]) {
-          if (!chainStart.has(o.id)) chainStart.set(o.id, { x: o.x, y: o.y });
+          if (!chainStart.has(o.id)) {
+            chainStart.set(o.id, {
+              x: o.x, y: o.y, width: o.width, height: o.height,
+            });
+          }
         }
       }
+
+      const frame = getFrameForTile ? getFrameForTile(tile) : null;
 
       const webviews = getAllWebviews();
       for (const wv of webviews) {
         wv.webview.style.pointerEvents = "none";
       }
 
-      function pushChains() {
+      function pushChainsFree() {
         const eDelta = tile.x + tile.width - (startX + startW);
         const wDelta = tile.x - startX;
         const sDelta = tile.y + tile.height - (startY + startH);
@@ -347,6 +353,83 @@ export function attachResize(
         for (const o of chains.w) o.x = chainStart.get(o.id).x + wDelta;
         for (const o of chains.s) o.y = chainStart.get(o.id).y + sDelta;
         for (const o of chains.n) o.y = chainStart.get(o.id).y + nDelta;
+      }
+
+      // Lay a glued chain out within the frame wall: keep tiles flush and at
+      // their original size while there is room, compress them toward their
+      // minimum once the chain reaches the frame edge.
+      function layoutBounded(chain, P, S, frameLo, frameHi, aFixedFar) {
+        const minTile = (MIN_SIZES[tile.type] || MIN_SIZES.term)[S];
+        const minOf = (o) => (MIN_SIZES[o.type] || MIN_SIZES.term)[S];
+        const startSize = (o) => chainStart.get(o.id)[S];
+        const toHi = aFixedFar === undefined;
+        const ordered = [...chain].sort((a, b) =>
+          toHi
+            ? chainStart.get(a.id)[P] - chainStart.get(b.id)[P]
+            : chainStart.get(b.id)[P] - chainStart.get(a.id)[P]);
+        const chainMin = ordered.reduce((s, o) => s + minOf(o), 0);
+
+        let cursor;
+        let avail;
+        if (toHi) {
+          const maxFar = frameHi - chainMin;
+          if (tile[P] + tile[S] > maxFar) {
+            tile[S] = Math.max(minTile, maxFar - tile[P]);
+          }
+          cursor = tile[P] + tile[S];
+          avail = frameHi - cursor;
+        } else {
+          const minNear = frameLo + chainMin;
+          if (tile[P] < minNear) {
+            tile[P] = minNear;
+            tile[S] = Math.max(minTile, aFixedFar - tile[P]);
+          }
+          cursor = tile[P];
+          avail = cursor - frameLo;
+        }
+
+        const need = ordered.reduce((s, o) => s + startSize(o), 0);
+        const extra = Math.max(0, avail - chainMin);
+        const flexTotal = ordered.reduce(
+          (s, o) => s + Math.max(0, startSize(o) - minOf(o)), 0) || 1;
+        for (const o of ordered) {
+          const size = need <= avail
+            ? startSize(o)
+            : minOf(o) + extra * (Math.max(0, startSize(o) - minOf(o)) / flexTotal);
+          if (toHi) {
+            o[P] = cursor;
+            o[S] = size;
+            cursor += size;
+          } else {
+            o[P] = cursor - size;
+            o[S] = size;
+            cursor = o[P];
+          }
+        }
+      }
+
+      function pushChainsInFrame() {
+        if (dir.includes("e")) {
+          layoutBounded(chains.e, "x", "width", frame.x, frame.x + frame.width);
+        }
+        if (dir.includes("w")) {
+          layoutBounded(
+            chains.w, "x", "width", frame.x, frame.x + frame.width,
+            startX + startW);
+        }
+        if (dir.includes("s")) {
+          layoutBounded(chains.s, "y", "height", frame.y, frame.y + frame.height);
+        }
+        if (dir.includes("n")) {
+          layoutBounded(
+            chains.n, "y", "height", frame.y, frame.y + frame.height,
+            startY + startH);
+        }
+      }
+
+      function pushChains() {
+        if (frame) pushChainsInFrame();
+        else pushChainsFree();
       }
 
       function onMove(e) {
