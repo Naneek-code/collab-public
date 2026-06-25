@@ -595,6 +595,8 @@ contextBridge.exposeInMainWorld("api", {
       "tile-list:remove",
       "tile-list:update",
       "tile-list:focus",
+      "tile-list:frames",
+      "tile-list:notif",
     ];
     const handlers = channels.map((ch) => {
       const handler = (_event: unknown, ...args: unknown[]) =>

@@ -7,7 +7,8 @@ import {
   Code,
   Image,
 } from "@phosphor-icons/react";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { CaretRight, Crosshair } from "@phosphor-icons/react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import "./App.css";
 
 type TileType = "term" | "note" | "code" | "image" | "graph" | "browser";
@@ -18,6 +19,13 @@ interface TileEntry {
   title: string;
   description: string;
   status: "running" | "exited" | "idle" | null;
+  frameId: string | null;
+}
+
+interface FrameEntry {
+  id: string;
+  title: string;
+  color: string;
 }
 
 function isTileEntry(value: unknown): value is TileEntry {
@@ -29,6 +37,12 @@ function isTileEntry(value: unknown): value is TileEntry {
     typeof e.title === "string" &&
     typeof e.description === "string"
   );
+}
+
+function isFrameEntry(value: unknown): value is FrameEntry {
+  if (!value || typeof value !== "object") return false;
+  const e = value as Record<string, unknown>;
+  return typeof e.id === "string" && typeof e.title === "string";
 }
 
 const TYPE_ICONS: Record<TileType, { icon: Icon; color: string }> = {
@@ -43,6 +57,8 @@ const TYPE_ICONS: Record<TileType, { icon: Icon; color: string }> = {
 function TileEntryRow({
   entry,
   focused,
+  nested,
+  hasNotif,
   isRenaming,
   renameValue,
   onClick,
@@ -54,6 +70,8 @@ function TileEntryRow({
 }: {
   entry: TileEntry;
   focused: boolean;
+  nested?: boolean;
+  hasNotif?: boolean;
   isRenaming: boolean;
   renameValue: string;
   onClick: () => void;
@@ -73,7 +91,7 @@ function TileEntryRow({
 
   return (
     <div
-      className={`tile-entry${focused ? " focused" : ""}`}
+      className={`tile-entry${focused ? " focused" : ""}${nested ? " nested" : ""}`}
       onClick={onClick}
       onDoubleClick={onDoubleClick}
       onContextMenu={onContextMenu}
@@ -107,12 +125,16 @@ function TileEntryRow({
       ) : (
         <div className="tile-title">{entry.title}</div>
       )}
+      {!isRenaming && hasNotif && <span className="notif-dot" />}
     </div>
   );
 }
 
 function App() {
   const [entries, setEntries] = useState<TileEntry[]>([]);
+  const [frames, setFrames] = useState<FrameEntry[]>([]);
+  const [notif, setNotif] = useState<Set<string>>(new Set());
+  const [collapsed, setCollapsed] = useState<Set<string>>(new Set());
   const [focusedId, setFocusedId] = useState<string | null>(null);
   const [renamingId, setRenamingId] = useState<string | null>(null);
   const [renameValue, setRenameValue] = useState("");
@@ -120,7 +142,17 @@ function App() {
   useEffect(() => {
     const cleanup = window.api.onTileListMessage(
       (channel: string, ...args: unknown[]) => {
-        if (channel === "tile-list:init") {
+        if (channel === "tile-list:frames") {
+          const list = Array.isArray(args[0])
+            ? args[0].filter(isFrameEntry)
+            : [];
+          setFrames(list);
+        } else if (channel === "tile-list:notif") {
+          const ids = Array.isArray(args[0])
+            ? args[0].filter((v): v is string => typeof v === "string")
+            : [];
+          setNotif(new Set(ids));
+        } else if (channel === "tile-list:init") {
           const tiles = Array.isArray(args[0])
             ? args[0].filter(isTileEntry)
             : [];
@@ -194,42 +226,124 @@ function App() {
     setRenameValue("");
   }, []);
 
+  const gotoFrame = useCallback((id: string) => {
+    window.api.sendToHost("tile-list:goto-frame", id);
+  }, []);
+
+  const toggleFrame = useCallback((id: string) => {
+    setCollapsed((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  }, []);
+
+  const { byFrame, looseTiles } = useMemo(() => {
+    const frameIds = new Set(frames.map((f) => f.id));
+    const map = new Map<string, TileEntry[]>();
+    const loose: TileEntry[] = [];
+    for (const e of entries) {
+      if (e.frameId && frameIds.has(e.frameId)) {
+        const arr = map.get(e.frameId);
+        if (arr) arr.push(e);
+        else map.set(e.frameId, [e]);
+      } else {
+        loose.push(e);
+      }
+    }
+    return { byFrame: map, looseTiles: loose };
+  }, [entries, frames]);
+
+  const visibleTileIds = useMemo(() => {
+    const ids: string[] = [];
+    for (const f of frames) {
+      if (collapsed.has(f.id)) continue;
+      for (const e of byFrame.get(f.id) ?? []) ids.push(e.id);
+    }
+    for (const e of looseTiles) ids.push(e.id);
+    return ids;
+  }, [frames, byFrame, looseTiles, collapsed]);
+
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
       if (renamingId) return;
       if (e.key !== "ArrowUp" && e.key !== "ArrowDown") return;
-      if (entries.length === 0) return;
+      if (visibleTileIds.length === 0) return;
       e.preventDefault();
       const dir = e.key === "ArrowUp" ? -1 : 1;
-      const currentIdx = entries.findIndex((entry) => entry.id === focusedId);
+      const currentIdx = visibleTileIds.indexOf(focusedId ?? "");
       const nextIdx =
         currentIdx < 0
           ? 0
-          : (currentIdx + dir + entries.length) % entries.length;
-      handleClick(entries[nextIdx].id);
+          : (currentIdx + dir + visibleTileIds.length) % visibleTileIds.length;
+      const nextId = visibleTileIds[nextIdx];
+      if (nextId) handleClick(nextId);
     };
     document.addEventListener("keydown", handler);
     return () => document.removeEventListener("keydown", handler);
-  }, [entries, focusedId, handleClick, renamingId]);
+  }, [visibleTileIds, focusedId, handleClick, renamingId]);
+
+  const renderRow = (entry: TileEntry, nested: boolean) => (
+    <TileEntryRow
+      key={entry.id}
+      entry={entry}
+      nested={nested}
+      hasNotif={notif.has(entry.id)}
+      focused={entry.id === focusedId}
+      isRenaming={entry.id === renamingId}
+      renameValue={entry.id === renamingId ? renameValue : ""}
+      onClick={() => handleClick(entry.id)}
+      onDoubleClick={() => handleDoubleClick(entry.id)}
+      onContextMenu={(e) => handleContextMenu(entry.id, e)}
+      onRenameChange={setRenameValue}
+      onRenameConfirm={() => commitRename(entry.id)}
+      onRenameCancel={cancelRename}
+    />
+  );
 
   return (
     <div className="tile-list">
-      {entries.map((entry) => (
-        <TileEntryRow
-          key={entry.id}
-          entry={entry}
-          focused={entry.id === focusedId}
-          isRenaming={entry.id === renamingId}
-          renameValue={entry.id === renamingId ? renameValue : ""}
-          onClick={() => handleClick(entry.id)}
-          onDoubleClick={() => handleDoubleClick(entry.id)}
-          onContextMenu={(e) => handleContextMenu(entry.id, e)}
-          onRenameChange={setRenameValue}
-          onRenameConfirm={() => commitRename(entry.id)}
-          onRenameCancel={cancelRename}
-        />
-      ))}
-      {entries.length === 0 && (
+      {frames.map((frame) => {
+        const children = byFrame.get(frame.id) ?? [];
+        const isCollapsed = collapsed.has(frame.id);
+        const frameNotif = children.some((c) => notif.has(c.id));
+        return (
+          <div key={frame.id} className="frame-group">
+            <div
+              className="frame-row"
+              onClick={() => toggleFrame(frame.id)}
+            >
+              <CaretRight
+                className={`frame-caret${isCollapsed ? "" : " open"}`}
+                size={12}
+                weight="bold"
+              />
+              <span
+                className="frame-swatch"
+                style={{ background: frame.color }}
+              />
+              <span className="frame-name">{frame.title}</span>
+              {frameNotif && <span className="notif-dot" />}
+              <span className="frame-count">{children.length}</span>
+              <button
+                type="button"
+                className="frame-goto"
+                title="Go to frame"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  gotoFrame(frame.id);
+                }}
+              >
+                <Crosshair size={13} weight="bold" />
+              </button>
+            </div>
+            {!isCollapsed && children.map((entry) => renderRow(entry, true))}
+          </div>
+        );
+      })}
+      {looseTiles.map((entry) => renderRow(entry, false))}
+      {entries.length === 0 && frames.length === 0 && (
         <div className="tile-empty">
           No tiles on canvas
         </div>

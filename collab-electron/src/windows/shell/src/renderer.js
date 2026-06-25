@@ -548,6 +548,7 @@ async function init() {
 		return {
 			id: tile.id, type: tile.type,
 			title, description, status,
+			frameId: frameManager?.getFrameForTile(tile)?.id ?? null,
 		};
 	}
 
@@ -636,8 +637,36 @@ async function init() {
 	// -- Tile list sync --
 
 	let lastTileSnapshot = new Map();
+	let lastFramesJson = "";
+	const notifiedTiles = new Set();
+
+	function sendNotifBadges() {
+		tileListWebview.send("tile-list:notif", [...notifiedTiles]);
+	}
+
+	function setTileNotified(id, on) {
+		if (on === notifiedTiles.has(id)) return;
+		if (on) notifiedTiles.add(id);
+		else notifiedTiles.delete(id);
+		sendNotifBadges();
+	}
+
+	function buildFrameList() {
+		return (frameManager?.getFramesForSave() ?? []).map((f) => ({
+			id: f.id, title: f.title, color: f.color,
+		}));
+	}
+
+	function syncFrameList() {
+		const frames = buildFrameList();
+		const json = JSON.stringify(frames);
+		if (json === lastFramesJson) return;
+		lastFramesJson = json;
+		tileListWebview.send("tile-list:frames", frames);
+	}
 
 	function syncTileList() {
+		syncFrameList();
 		const currentIds = new Set();
 		for (const [id] of tileManager.getTileDOMs()) {
 			const tile = getTile(id);
@@ -647,7 +676,8 @@ async function init() {
 			const prev = lastTileSnapshot.get(id);
 			if (!prev || prev.title !== entry.title ||
 				prev.description !== entry.description ||
-				prev.status !== entry.status) {
+				prev.status !== entry.status ||
+				prev.frameId !== entry.frameId) {
 				tileListWebview.send(
 					prev ? "tile-list:update" : "tile-list:add",
 					entry,
@@ -717,6 +747,7 @@ async function init() {
 				cwd: tile?.cwd || tile?.autoTitle || null,
 			});
 			if (tile?.id) {
+				setTileNotified(tile.id, false);
 				const badge = tileManager
 					?.getTileDOMs()?.get(tile.id)
 					?.container?.querySelector(".tile-notif-badge");
@@ -814,6 +845,7 @@ async function init() {
 	}
 
 	function clearNotifBadge(tileId) {
+		setTileNotified(tileId, false);
 		const dom = tileManager.getTileDOMs().get(tileId);
 		if (!dom) return;
 		const badge = dom.container.querySelector(".tile-notif-badge");
@@ -841,6 +873,7 @@ async function init() {
 			if (group) group.appendChild(dot);
 			else dom.titleBar.appendChild(dot);
 		}
+		setTileNotified(tile.id, true);
 	});
 
 	// -- Agent panel init (after tileManager, since getAllWebviews references it) --
@@ -1554,6 +1587,9 @@ async function init() {
 	tileListWebview.webview.addEventListener(
 		"dom-ready", () => {
 			lastTileSnapshot = new Map();
+			lastFramesJson = JSON.stringify(buildFrameList());
+			tileListWebview.send("tile-list:frames", buildFrameList());
+			sendNotifBadges();
 			const initEntries = [];
 			for (const [id] of tileManager.getTileDOMs()) {
 				const tile = getTile(id);
@@ -1597,6 +1633,12 @@ async function init() {
 				const tileId = event.args[0];
 				const newTitle = event.args[1];
 				tileManager.renameTile(tileId, newTitle);
+			} else if (event.channel === "tile-list:goto-frame") {
+				const frameId = event.args[0];
+				const frame = frameManager
+					?.getFramesForSave()
+					.find((f) => f.id === frameId);
+				if (frame) edgeIndicators.panToTile(frame);
 			}
 		},
 	);
