@@ -7,7 +7,6 @@ import {
 } from "node:fs/promises";
 import { existsSync } from "node:fs";
 import { join } from "node:path";
-import { tmpdir } from "node:os";
 import * as crypto from "node:crypto";
 import { COLLAB_DIR } from "./paths";
 
@@ -142,7 +141,7 @@ async function ensureDir(): Promise<void> {
 
 async function atomicWrite(path: string, data: unknown): Promise<void> {
   await ensureDir();
-  const tmp = join(tmpdir(), `collab-ws-${crypto.randomUUID()}.json`);
+  const tmp = `${path}.${crypto.randomUUID()}.tmp`;
   await writeFile(tmp, JSON.stringify(data, null, 2), "utf-8");
   await rename(tmp, path);
 }
