@@ -55,7 +55,7 @@ html,
 body {
 	height: 100%;
 	overflow: hidden;
-	background: transparent;
+	background: var(--bg);
 	color: var(--fg);
 	font-family: var(--font-sans);
 	-webkit-font-smoothing: antialiased;
@@ -65,11 +65,12 @@ body {
 	display: flex;
 	flex-direction: column;
 	padding: 0;
-	background: transparent;
 }
 
 html.platform-win,
-body.platform-win {
+body.platform-win,
+html.platform-darwin,
+body.platform-darwin {
 	background: transparent;
 }
 

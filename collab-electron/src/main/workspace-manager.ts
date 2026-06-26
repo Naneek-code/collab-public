@@ -7,7 +7,6 @@ import {
 } from "node:fs/promises";
 import { existsSync } from "node:fs";
 import { join } from "node:path";
-import { tmpdir } from "node:os";
 import * as crypto from "node:crypto";
 import { COLLAB_DIR } from "./paths";
 
@@ -142,7 +141,7 @@ async function ensureDir(): Promise<void> {
 
 async function atomicWrite(path: string, data: unknown): Promise<void> {
   await ensureDir();
-  const tmp = join(tmpdir(), `collab-ws-${crypto.randomUUID()}.json`);
+  const tmp = `${path}.${crypto.randomUUID()}.tmp`;
   await writeFile(tmp, JSON.stringify(data, null, 2), "utf-8");
   await rename(tmp, path);
 }
@@ -390,13 +389,19 @@ export async function getTabs(workspaceId: string): Promise<{
   };
 }
 
+const loadedTabs = new Set<string>();
+
 export async function loadTabState(
   workspaceId: string,
   tabId: string,
 ): Promise<CanvasState | null> {
   const file = await readWorkspace(workspaceId);
   const tab = file && tabOf(file, tabId);
-  return tab ? normalizeState(tab.state) : null;
+  if (tab) {
+    loadedTabs.add(`${workspaceId}/${tabId}`);
+    return normalizeState(tab.state);
+  }
+  return null;
 }
 
 export async function saveTabState(
@@ -409,9 +414,11 @@ export async function saveTabState(
   const tab = tabOf(file, tabId);
   if (!tab) return;
   const normalized = normalizeState(state);
+  const key = `${workspaceId}/${tabId}`;
   if (
     normalized.tiles.length === 0 &&
-    tab.state.tiles.length > 0
+    tab.state.tiles.length > 0 &&
+    !loadedTabs.has(key)
   ) {
     console.warn(
       "[workspace-manager] Rejected save: would erase %d tiles for tab %s",
