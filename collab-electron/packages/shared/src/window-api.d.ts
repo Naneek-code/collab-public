@@ -22,6 +22,52 @@ interface UpdateState {
   error?: string;
 }
 
+interface IdeInfo {
+  id: string;
+  label: string;
+}
+
+interface GitFileChange {
+  path: string;
+  index: string;
+  worktree: string;
+}
+
+interface GitStatus {
+  isRepo: boolean;
+  branch: string;
+  ahead: number;
+  behind: number;
+  files: GitFileChange[];
+  error?: string;
+}
+
+interface GitResult {
+  ok: boolean;
+  error?: string;
+}
+
+interface DockerContainer {
+  id: string;
+  shortId: string;
+  name: string;
+  image: string;
+  state: string;
+  status: string;
+  ports: string;
+  running: boolean;
+}
+
+interface DockerAvailability {
+  available: boolean;
+  error?: string;
+}
+
+interface DockerMutationResult {
+  ok: boolean;
+  error?: string;
+}
+
 interface DirEntry {
   name: string;
   isDirectory: boolean;
@@ -327,6 +373,28 @@ export interface CollabApi {
   revealInFinder: (path: string) => void;
   createGraphTile: (folderPath: string) => void;
   runInTerminal: (command: string) => void;
+
+  // IDE integration
+  detectIdes: () => Promise<IdeInfo[]>;
+  openInIde: (path: string, ideId?: string) => void;
+  openVscodeEmbedded: (folderPath: string) => void;
+  editorGitStatus: (folder: string) => Promise<GitStatus>;
+  editorGitStage: (folder: string, path: string) => Promise<GitResult>;
+  editorGitStageAll: (folder: string) => Promise<GitResult>;
+  editorGitUnstage: (folder: string, path: string) => Promise<GitResult>;
+  editorGitDiscard: (folder: string, path: string) => Promise<GitResult>;
+  editorGitCommit: (folder: string, message: string) => Promise<GitResult>;
+  editorFindFiles: (folder: string, query: string) => Promise<string[]>;
+
+  // Docker
+  dockerAvailable: () => Promise<DockerAvailability>;
+  dockerList: () => Promise<DockerContainer[]>;
+  dockerStart: (id: string) => Promise<DockerMutationResult>;
+  dockerStop: (id: string) => Promise<DockerMutationResult>;
+  dockerRestart: (id: string) => Promise<DockerMutationResult>;
+  dockerOpenTerminal: (id: string, name: string) => void;
+  dockerOpenLogs: (id: string, name: string) => void;
+  dockerOpenPanel: () => void;
   onRunInTerminal: (cb: RunInTerminalCb) => void;
   offRunInTerminal: (cb: RunInTerminalCb) => void;
 

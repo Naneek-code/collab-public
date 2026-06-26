@@ -22,7 +22,9 @@ export type TerminalTarget =
   | "auto"
   | "powershell"
   | "shell"
-  | `wsl:${string}`;
+  | `wsl:${string}`
+  | `docker:${string}`
+  | `docker-logs:${string}`;
 
 const DEFAULT_CONFIG: AppConfig = {
   workspaces: [],

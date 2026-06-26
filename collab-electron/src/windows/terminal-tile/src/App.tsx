@@ -32,6 +32,7 @@ function App() {
     const isRestored = params.get("restored") === "1";
     const cwd = params.get("cwd") || undefined;
     const tileId = params.get("tileId") || undefined;
+    const urlTarget = params.get("target") || undefined;
 
     let cancelled = false;
 
@@ -157,7 +158,7 @@ function App() {
         return;
       }
 
-      createFreshSession(undefined, undefined, binding);
+      createFreshSession(urlTarget, undefined, binding);
     };
 
     void init();

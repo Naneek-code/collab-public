@@ -1,0 +1,560 @@
+:root {
+  --vsc-bg: #1e1e1e;
+  --vsc-sidebar-bg: #181818;
+  --vsc-activity-bg: #1f1f1f;
+  --vsc-border: #2b2b2b;
+  --vsc-fg: #cccccc;
+  --vsc-muted: #8a8a8a;
+  --vsc-active: #ffffff;
+  --vsc-row-hover: #2a2d2e;
+  --vsc-row-active: #094771;
+  --vsc-accent: #0078d4;
+  --vsc-tab-bg: #2d2d2d;
+  --vsc-tab-active-bg: #1e1e1e;
+}
+
+html.dark,
+:root {
+  color-scheme: dark;
+}
+
+html:not(.dark) {
+  --vsc-bg: #ffffff;
+  --vsc-sidebar-bg: #f3f3f3;
+  --vsc-activity-bg: #f8f8f8;
+  --vsc-border: #e5e5e5;
+  --vsc-fg: #3b3b3b;
+  --vsc-muted: #6c6c6c;
+  --vsc-active: #000000;
+  --vsc-row-hover: #e8e8e8;
+  --vsc-row-active: #cce5ff;
+  --vsc-accent: #0078d4;
+  --vsc-tab-bg: #ececec;
+  --vsc-tab-active-bg: #ffffff;
+}
+
+html,
+body,
+#root {
+  margin: 0;
+  height: 100%;
+  width: 100%;
+  overflow: hidden;
+}
+
+.vsc {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  width: 100vw;
+  background: var(--vsc-bg);
+  color: var(--vsc-fg);
+  font-family: var(--font-sans, "Segoe UI", system-ui, sans-serif);
+  font-size: 13px;
+}
+
+.vsc-body {
+  flex: 1 1 auto;
+  display: flex;
+  min-height: 0;
+}
+
+.vsc-editor-host {
+  height: 100%;
+  width: 100%;
+}
+
+/* Status bar */
+.vsc-statusbar {
+  flex: 0 0 22px;
+  height: 22px;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 0 12px;
+  background: var(--vsc-accent);
+  color: #ffffff;
+  font-size: 11px;
+}
+
+.vsc-status-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  white-space: nowrap;
+}
+
+.vsc-status-spacer {
+  flex: 1;
+}
+
+/* Activity bar */
+.vsc-activitybar {
+  width: 48px;
+  flex: 0 0 48px;
+  background: var(--vsc-activity-bg);
+  border-right: 1px solid var(--vsc-border);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 8px 0;
+  gap: 14px;
+}
+
+.vsc-act {
+  color: var(--vsc-muted);
+  cursor: pointer;
+  opacity: 0.8;
+}
+
+.vsc-act:hover {
+  color: var(--vsc-fg);
+}
+
+.vsc-act.active {
+  color: var(--vsc-active);
+  position: relative;
+}
+
+.vsc-act.active::before {
+  content: "";
+  position: absolute;
+  left: -14px;
+  top: -2px;
+  width: 2px;
+  height: 26px;
+  background: var(--vsc-active);
+}
+
+.vsc-act-spacer {
+  flex: 1;
+}
+
+/* Sidebar / explorer */
+.vsc-sidebar {
+  width: 220px;
+  flex: 0 0 220px;
+  background: var(--vsc-sidebar-bg);
+  border-right: 1px solid var(--vsc-border);
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+
+.vsc-sidebar-title {
+  padding: 9px 16px 4px;
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--vsc-muted);
+}
+
+.vsc-folder-name {
+  padding: 2px 16px 6px;
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  color: var(--vsc-fg);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.vsc-tree-scroll {
+  flex: 1 1 auto;
+  overflow-y: auto;
+  min-height: 0;
+}
+
+.vsc-tree-loading {
+  padding: 10px 16px;
+  color: var(--vsc-muted);
+  font-size: 12px;
+}
+
+.vsc-row {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  height: 22px;
+  padding-right: 8px;
+  cursor: pointer;
+  white-space: nowrap;
+  user-select: none;
+}
+
+.vsc-row:hover {
+  background: var(--vsc-row-hover);
+}
+
+.vsc-row.active {
+  background: var(--vsc-row-active);
+}
+
+.vsc-caret {
+  flex: 0 0 auto;
+  color: var(--vsc-muted);
+  transition: transform 0.1s ease;
+}
+
+.vsc-caret.open {
+  transform: rotate(90deg);
+}
+
+.vsc-caret-spacer {
+  width: 14px;
+  flex: 0 0 auto;
+}
+
+.vsc-row-icon {
+  flex: 0 0 auto;
+  color: var(--vsc-muted);
+}
+
+.vsc-folder-icon {
+  color: #c09553;
+}
+
+.vsc-row-label {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Main editor area */
+.vsc-main {
+  flex: 1 1 auto;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 0;
+}
+
+.vsc-tabs {
+  display: flex;
+  height: 35px;
+  flex: 0 0 35px;
+  background: var(--vsc-activity-bg);
+  border-bottom: 1px solid var(--vsc-border);
+  overflow-x: auto;
+}
+
+.vsc-tab {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0 10px;
+  height: 100%;
+  background: var(--vsc-tab-bg);
+  border-right: 1px solid var(--vsc-border);
+  color: var(--vsc-muted);
+  cursor: pointer;
+  white-space: nowrap;
+  font-size: 12px;
+}
+
+.vsc-tab.active {
+  background: var(--vsc-tab-active-bg);
+  color: var(--vsc-active);
+}
+
+.vsc-tab.active::before {
+  content: "";
+  position: absolute;
+  margin-top: -34px;
+  height: 2px;
+  width: 100%;
+  margin-left: -10px;
+  background: var(--vsc-accent);
+}
+
+.vsc-tab-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 160px;
+}
+
+.vsc-tab-controls {
+  position: relative;
+  flex: 0 0 auto;
+  width: 16px;
+  height: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.vsc-tab-close {
+  position: absolute;
+  border-radius: 4px;
+  opacity: 0;
+  cursor: pointer;
+}
+
+.vsc-tab-dot {
+  position: absolute;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: currentColor;
+  opacity: 0;
+}
+
+.vsc-tab.dirty .vsc-tab-dot {
+  opacity: 0.9;
+}
+
+.vsc-tab:hover .vsc-tab-close {
+  opacity: 0.85;
+}
+
+.vsc-tab:hover .vsc-tab-dot {
+  opacity: 0;
+}
+
+.vsc-tab-close:hover {
+  opacity: 1;
+  background: var(--vsc-row-hover);
+}
+
+.vsc-editor {
+  flex: 1 1 auto;
+  min-height: 0;
+  position: relative;
+}
+
+.vsc-editor .code-editor-view,
+.vsc-editor .code-editor-container {
+  height: 100%;
+}
+
+.vsc-welcome {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  color: var(--vsc-muted);
+}
+
+.vsc-welcome-title {
+  font-size: 22px;
+  font-weight: 300;
+  letter-spacing: 0.1em;
+}
+
+.vsc-welcome-sub {
+  font-size: 13px;
+}
+
+/* Sidebar panels (search / git / settings) */
+.vsc-panel {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-height: 0;
+}
+
+.vsc-title-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.vsc-mini-btn {
+  border: none;
+  background: transparent;
+  color: var(--vsc-muted);
+  cursor: pointer;
+  font-size: 14px;
+  padding: 0 4px;
+  border-radius: 4px;
+}
+
+.vsc-mini-btn:hover {
+  color: var(--vsc-fg);
+  background: var(--vsc-row-hover);
+}
+
+.vsc-search-input {
+  margin: 2px 10px 8px;
+  padding: 5px 8px;
+  background: var(--vsc-bg);
+  border: 1px solid var(--vsc-border);
+  border-radius: 4px;
+  color: var(--vsc-fg);
+  font-size: 12px;
+  outline: none;
+}
+
+.vsc-search-input:focus {
+  border-color: var(--vsc-accent);
+}
+
+/* Git */
+.vsc-git-branch {
+  padding: 0 16px 8px;
+  font-size: 11px;
+  color: var(--vsc-muted);
+}
+
+.vsc-git-row {
+  position: relative;
+  gap: 6px;
+}
+
+.vsc-git-dir {
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--vsc-muted);
+  opacity: 0.6;
+  font-size: 11px;
+  direction: rtl;
+  text-align: left;
+}
+
+.vsc-git-status {
+  flex: 0 0 auto;
+  font-weight: 700;
+  font-size: 12px;
+  width: 14px;
+  text-align: center;
+}
+
+.vsc-git-sync {
+  margin-left: 6px;
+}
+
+.vsc-commit-box {
+  padding: 0 10px 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.vsc-commit-input {
+  resize: vertical;
+  padding: 6px 8px;
+  background: var(--vsc-bg);
+  border: 1px solid var(--vsc-border);
+  border-radius: 4px;
+  color: var(--vsc-fg);
+  font-size: 12px;
+  font-family: inherit;
+  outline: none;
+}
+
+.vsc-commit-input:focus {
+  border-color: var(--vsc-accent);
+}
+
+.vsc-commit-btn {
+  padding: 5px 8px;
+  border: none;
+  border-radius: 4px;
+  background: var(--vsc-accent);
+  color: #fff;
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.vsc-commit-btn:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+.vsc-commit-error {
+  color: #e05252;
+  font-size: 11px;
+  white-space: pre-wrap;
+}
+
+.vsc-git-group {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 10px 2px;
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--vsc-muted);
+}
+
+.vsc-git-count {
+  background: var(--vsc-row-hover);
+  border-radius: 9px;
+  padding: 0 6px;
+  font-size: 10px;
+  font-weight: 600;
+}
+
+.vsc-git-group-btn {
+  margin-left: auto;
+}
+
+.vsc-git-actions {
+  display: none;
+  align-items: center;
+  gap: 2px;
+  flex: 0 0 auto;
+}
+
+.vsc-git-row:hover .vsc-git-actions {
+  display: flex;
+}
+
+.vsc-git-row:hover .vsc-git-status {
+  display: none;
+}
+
+.git-m {
+  color: #e2c08d;
+}
+
+.git-u {
+  color: #73c991;
+}
+
+.git-a {
+  color: #73c991;
+}
+
+.git-d {
+  color: #e05252;
+}
+
+/* Settings */
+.vsc-settings {
+  padding: 4px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  overflow-y: auto;
+}
+
+.vsc-setting {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 12px;
+  color: var(--vsc-fg);
+}
+
+.vsc-setting input[type="number"] {
+  width: 70px;
+  padding: 4px 6px;
+  background: var(--vsc-bg);
+  border: 1px solid var(--vsc-border);
+  border-radius: 4px;
+  color: var(--vsc-fg);
+  outline: none;
+}
+
+.vsc-setting-row {
+  flex-direction: row;
+  align-items: center;
+  justify-content: space-between;
+}

@@ -55,6 +55,15 @@ import { installCli } from "./cli-installer";
 import { listTerminalTargets } from "./terminal-target";
 import { readSessionMeta, writeSessionMeta } from "./tmux";
 import { registerBrowserIpc } from "./ipc-browser";
+import { registerDockerHandlers } from "./ipc-docker";
+import { registerEditorHandlers } from "./ipc-editor";
+import {
+  ensureServer as ensureVscodeServer,
+  getToken as getVscodeToken,
+  prewarm as prewarmVscodeServer,
+  resetPartitionOnce as resetVscodePartition,
+  stopAll as stopVscodeServer,
+} from "./vscode-server-manager";
 import { registerAgentIpc } from "./acp-agent";
 import { initNotificationOverlay } from "./notification-overlay";
 
@@ -593,10 +602,21 @@ ipcMain.handle("shell:get-view-config", () => {
     terminal: { src: getRendererURL("terminal"), preload },
     terminalTile: { src: getRendererURL("terminal-tile"), preload },
     graphTile: { src: getRendererURL("graph-tile"), preload },
+    dockerTile: { src: getRendererURL("docker-tile"), preload },
+    codeEditorTile: { src: getRendererURL("codeditor-tile"), preload },
     settings: { src: getRendererURL("settings"), preload },
     tileList: { src: getRendererURL("tile-list"), preload },
     agentChat: { src: getRendererURL("agent-chat"), preload },
   };
+});
+
+ipcMain.handle("vscode:server-url", async () => {
+  try {
+    const url = await ensureVscodeServer();
+    return { url, token: getVscodeToken() };
+  } catch (err) {
+    return { error: err instanceof Error ? err.message : String(err) };
+  }
 });
 
 ipcMain.handle(
@@ -819,6 +839,7 @@ async function shutdownBackgroundServices(): Promise<void> {
   if (!DISABLE_GIT_REPLAY) gitReplay.stopWorker();
   stopJsonRpcServer();
   stopImageWorker();
+  stopVscodeServer();
 }
 
 app.on("open-file", (event, path) => {
@@ -924,6 +945,13 @@ app.whenReady().then(async () => {
   registerIpcHandlers(config);
   registerBrowserIpc();
   registerIntegrationsIpc();
+  registerEditorHandlers();
+  registerDockerHandlers({
+    forwardToWebview: (target, channel, ...args) => {
+      mainWindow?.webContents.send("shell:forward", target, channel, ...args);
+    },
+    trackEvent,
+  });
   registerAgentResumeIpc();
   setupUpdateIPC();
   updateManager.init({
@@ -943,6 +971,9 @@ app.whenReady().then(async () => {
   initAgentResume();
   initClaudeState(mainWindow!);
   initNotificationOverlay(mainWindow!);
+
+  await resetVscodePartition();
+  prewarmVscodeServer();
 
   initMainAnalytics();
   trackEvent("app_launched");

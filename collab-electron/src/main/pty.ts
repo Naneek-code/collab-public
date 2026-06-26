@@ -525,7 +525,10 @@ export async function createSession(
   const c = cols || 80;
   const r = rows || 24;
 
-  const mode = getTerminalMode();
+  const isDockerTarget = typeof preferredTarget === "string"
+    && (preferredTarget.startsWith("docker:")
+      || preferredTarget.startsWith("docker-logs:"));
+  const mode = isDockerTarget ? "sidecar" : getTerminalMode();
 
   if (mode === "tmux") {
     const sessionId = crypto.randomBytes(8).toString("hex");

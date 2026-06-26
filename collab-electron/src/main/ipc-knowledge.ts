@@ -4,6 +4,7 @@ import * as wikilinkIndex from "./wikilink-index";
 import { buildWorkspaceGraph } from "./workspace-graph";
 import * as agentActivity from "./agent-activity";
 import { workspaceForFile } from "./ipc-workspace";
+import { detectIdes, openInIde } from "./ide-manager";
 
 interface IpcContext {
   mainWindow: () => BrowserWindow | null;
@@ -114,4 +115,21 @@ export function registerKnowledgeHandlers(
       );
     },
   );
+
+  ipcMain.handle("ide:detect", () =>
+    detectIdes().map(({ id, label }) => ({ id, label })),
+  );
+
+  ipcMain.on(
+    "ide:open",
+    (_event, payload: { path: string; ideId?: string }) => {
+      ctx.trackEvent("ide_opened", { ide: payload.ideId ?? "default" });
+      openInIde(payload.path, payload.ideId);
+    },
+  );
+
+  ipcMain.on("vscode:open-embedded", (_event, folderPath: string) => {
+    ctx.trackEvent("vscode_embedded_opened");
+    ctx.forwardToWebview("canvas", "create-vscode-tile", folderPath);
+  });
 }

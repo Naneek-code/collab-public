@@ -22,6 +22,65 @@ function resolveInput(raw) {
   return `https://www.google.com/search?q=${encodeURIComponent(s)}`;
 }
 
+/** Pick black or white text for legibility on a given hex background. */
+function contrastColor(hex) {
+  const c = hex.replace("#", "");
+  if (c.length < 6) return "#ffffff";
+  const r = parseInt(c.slice(0, 2), 16);
+  const g = parseInt(c.slice(2, 4), 16);
+  const b = parseInt(c.slice(4, 6), 16);
+  const lum = (0.299 * r + 0.587 * g + 0.114 * b) / 255;
+  return lum > 0.6 ? "#000000" : "#ffffff";
+}
+
+/**
+ * Apply (or clear) a tile's user-chosen accent color to its title bar + border.
+ * @param {object} dom
+ * @param {import('./canvas-state.js').Tile} tile
+ */
+export function applyTileColor(dom, tile) {
+  const color = tile.color;
+  if (!color) {
+    dom.titleBar.style.background = "";
+    dom.titleBar.style.color = "";
+    dom.container.style.borderColor = "";
+    return;
+  }
+  dom.titleBar.style.background = color;
+  dom.titleBar.style.color = contrastColor(color);
+  dom.container.style.borderColor = color;
+}
+
+/**
+ * Open the native color picker, seeded with `initial`. Calls onPick live while
+ * dragging and once more on commit. The input lives offscreen and is removed
+ * after the dialog closes.
+ */
+export function pickColor(initial, onPick) {
+  const input = document.createElement("input");
+  input.type = "color";
+  input.value = initial || "#3b82f6";
+  input.style.position = "fixed";
+  input.style.left = "8px";
+  input.style.bottom = "8px";
+  input.style.opacity = "0";
+  input.style.pointerEvents = "none";
+  document.body.appendChild(input);
+  let done = false;
+  const cleanup = () => {
+    if (done) return;
+    done = true;
+    input.remove();
+  };
+  input.addEventListener("input", () => onPick(input.value));
+  input.addEventListener("change", () => {
+    onPick(input.value);
+    cleanup();
+  });
+  input.addEventListener("blur", () => setTimeout(cleanup, 150));
+  input.click();
+}
+
 /**
  * Creates the DOM structure for a tile.
  * @param {import('./canvas-state.js').Tile} tile
@@ -206,11 +265,22 @@ export function createTileDOM(tile, callbacks) {
       const selected = await window.shellApi.showContextMenu([
         { id: "rename", label: "Rename" },
         { id: "duplicate", label: "Duplicate" },
+        { id: "separator", label: "" },
+        { id: "set-color", label: "Set Color…" },
+        ...(tile.color
+          ? [{ id: "reset-color", label: "Reset Color" }]
+          : []),
       ]);
       if (selected === "rename" && callbacks.onRename) {
         callbacks.onRename(tile.id);
       } else if (selected === "duplicate" && callbacks.onDuplicate) {
         callbacks.onDuplicate(tile.id);
+      } else if (selected === "set-color" && callbacks.onSetColor) {
+        pickColor(tile.color, (color) =>
+          callbacks.onSetColor(tile.id, color),
+        );
+      } else if (selected === "reset-color" && callbacks.onResetColor) {
+        callbacks.onResetColor(tile.id);
       }
     });
   }
@@ -227,7 +297,9 @@ export function createTileDOM(tile, callbacks) {
   container.appendChild(contentArea);
   contentArea.appendChild(contentOverlay);
 
-  return { container, titleBar, titleText, contentArea, contentOverlay, closeBtn, urlInput, navBack, navForward, navReload };
+  const dom = { container, titleBar, titleText, contentArea, contentOverlay, closeBtn, urlInput, navBack, navForward, navReload };
+  applyTileColor(dom, tile);
+  return dom;
 }
 
 export function getTileLabel(tile) {
@@ -247,6 +319,16 @@ export function getTileLabel(tile) {
   if (tile.type === "graph") {
     if (tile.folderPath) return splitFilepath(tile.folderPath);
     return { parent: "", name: "Graph" };
+  }
+  if (tile.type === "docker") {
+    return { parent: "", name: "Containers" };
+  }
+  if (tile.type === "vscode") {
+    if (tile.folderPath) {
+      const { name } = splitFilepath(tile.folderPath);
+      return { parent: "VS Code · ", name: name || "VS Code" };
+    }
+    return { parent: "", name: "VS Code" };
   }
   if (tile.filePath) return splitFilepath(tile.filePath);
   return { parent: "", name: tile.type };

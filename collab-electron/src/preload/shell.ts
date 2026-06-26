@@ -11,6 +11,8 @@ interface AllViewConfigs {
   terminal: ViewConfig;
   terminalTile: ViewConfig;
   graphTile: ViewConfig;
+  dockerTile: ViewConfig;
+  codeEditorTile: ViewConfig;
   settings: ViewConfig;
   tileList: ViewConfig;
   agentChat: ViewConfig;
@@ -18,7 +20,8 @@ interface AllViewConfigs {
 
 const ALLOWED_PANELS = new Set([
   "nav", "viewer", "terminal", "terminalTile",
-  "graphTile", "settings", "tile-list", "agent-chat",
+  "graphTile", "dockerTile", "codeEditorTile",
+  "settings", "tile-list", "agent-chat",
 ]);
 
 // Buffer loading-done signal so it isn't lost if it arrives before
@@ -155,6 +158,12 @@ contextBridge.exposeInMainWorld("shellApi", {
     ipcRenderer.on("update:status", handler);
     return () => ipcRenderer.removeListener("update:status", handler);
   },
+
+  vscodeServerUrl: (): Promise<{
+    url?: string;
+    token?: string;
+    error?: string;
+  }> => ipcRenderer.invoke("vscode:server-url"),
 
   canvasLoadState: () => ipcRenderer.invoke("canvas:load-state"),
   canvasSaveState: (state: unknown) =>

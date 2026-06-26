@@ -132,11 +132,56 @@ function resolvePowerShellCommand(): string {
   return commandExists("pwsh.exe") ? "pwsh.exe" : "powershell.exe";
 }
 
+
+function resolveDockerTarget(
+  target: `docker:${string}` | `docker-logs:${string}`,
+  initialCwd: string,
+): ResolvedTerminalTarget {
+  if (target.startsWith("docker-logs:")) {
+    const id = target.slice("docker-logs:".length);
+    return {
+      target,
+      command: "docker",
+      args: ["logs", "-f", "--tail", "500", id],
+      displayName: "docker logs",
+      cwd: initialCwd,
+      cwdHostPath: initialCwd,
+    };
+  }
+
+  const id = target.slice("docker:".length);
+  return {
+    target,
+    command: "docker",
+    args: [
+      "exec",
+      "-it",
+      id,
+      "/bin/sh",
+      "-c",
+      "if [ -x /bin/bash ]; then exec /bin/bash; else exec /bin/sh; fi",
+    ],
+    displayName: `docker:${id.slice(0, 12)}`,
+    cwd: initialCwd,
+    cwdHostPath: initialCwd,
+  };
+}
+
 export function resolveTerminalTarget(
   preferredTarget: TerminalTarget,
   cwdHostPath?: string,
 ): ResolvedTerminalTarget {
   const initialCwd = cwdHostPath || os.homedir();
+
+  if (
+    preferredTarget.startsWith("docker:")
+    || preferredTarget.startsWith("docker-logs:")
+  ) {
+    return resolveDockerTarget(
+      preferredTarget as `docker:${string}` | `docker-logs:${string}`,
+      initialCwd,
+    );
+  }
 
   if (process.platform === "win32") {
     const target = resolveWindowsAutoTarget(

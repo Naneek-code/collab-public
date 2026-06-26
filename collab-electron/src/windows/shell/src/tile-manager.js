@@ -6,7 +6,7 @@ import {
 } from "./canvas-state.js";
 import {
 	createTileDOM, positionTile, updateTileTitle, getTileLabel,
-	startInlineRename,
+	startInlineRename, applyTileColor,
 } from "./tile-renderer.js";
 import { toCollabFileUrl } from "@collab/shared/collab-file-url";
 import { workspaceRootMatch } from "@collab/shared/path-utils";
@@ -72,6 +72,8 @@ export function createTileManager({
 				zIndex: t.zIndex,
 				userTitle: t.userTitle,
 				autoTitle: t.autoTitle,
+				target: t.target,
+				color: t.color,
 			})),
 			frames: getFrames(),
 			viewport: {
@@ -258,6 +260,10 @@ export function createTileManager({
 		}
 		if (tile.cwd) {
 			params.set("cwd", tile.cwd);
+		}
+		// Docker-backed terminals (exec / logs) carry their session kind here.
+		if (tile.target) {
+			params.set("target", tile.target);
 		}
 		const qs = params.toString();
 		wv.setAttribute(
@@ -573,6 +579,22 @@ export function createTileManager({
 					saveCanvasImmediate();
 				});
 			},
+			onSetColor: (id, color) => {
+				const t = getTile(id);
+				const d = tileDOMs.get(id);
+				if (!t || !d) return;
+				t.color = color;
+				applyTileColor(d, t);
+				saveCanvasImmediate();
+			},
+			onResetColor: (id) => {
+				const t = getTile(id);
+				const d = tileDOMs.get(id);
+				if (!t || !d) return;
+				delete t.color;
+				applyTileColor(d, t);
+				saveCanvasImmediate();
+			},
 		});
 
 		// Double-click title bar → center tile in viewport
@@ -728,6 +750,96 @@ export function createTileManager({
 		return tile;
 	}
 
+	function spawnDockerWebview(tile) {
+		const dom = tileDOMs.get(tile.id);
+		if (!dom) return;
+
+		const wv = document.createElement("webview");
+		const dockerConfig = configs.dockerTile;
+		wv.setAttribute("src", dockerConfig.src);
+		wv.setAttribute("preload", dockerConfig.preload);
+		wv.setAttribute(
+			"webpreferences", "contextIsolation=yes, sandbox=yes",
+		);
+		wv.style.width = "100%";
+		wv.style.height = "100%";
+		wv.style.border = "none";
+
+		dom.contentArea.appendChild(wv);
+		dom.webview = wv;
+	}
+
+	function createDockerTile(cx, cy) {
+		const tile = createCanvasTile("docker", cx, cy, {});
+		spawnDockerWebview(tile);
+		saveCanvasImmediate();
+		return tile;
+	}
+
+	function spawnVscodeWebview(tile) {
+		const dom = tileDOMs.get(tile.id);
+		if (!dom) return;
+		if (!tile.folderPath) return;
+
+		// Loading skeleton shown until VS Code finishes loading in the webview.
+		const overlay = document.createElement("div");
+		overlay.className = "vscode-loading";
+		overlay.innerHTML =
+			'<div class="vscode-loading-spinner"></div>' +
+			'<div class="vscode-loading-text">Starting VS Code…</div>';
+		dom.contentArea.appendChild(overlay);
+
+		const fail = (msg) => {
+			const text = overlay.querySelector(".vscode-loading-text");
+			const spinner = overlay.querySelector(".vscode-loading-spinner");
+			if (spinner) spinner.remove();
+			if (text) text.textContent = msg;
+		};
+
+		window.shellApi
+			.vscodeServerUrl()
+			.then((res) => {
+				if (!res || !res.url) {
+					fail((res && res.error) || "VS Code is not available.");
+					return;
+				}
+				const tkn = res.token
+					? `tkn=${encodeURIComponent(res.token)}&`
+					: "";
+				let folderUri = tile.folderPath.replace(/\\/g, "/");
+				if (/^[a-zA-Z]:\//.test(folderUri)) folderUri = "/" + folderUri;
+				const url =
+					`${res.url}/?${tkn}folder=` +
+					encodeURIComponent(folderUri);
+				const wv = document.createElement("webview");
+				wv.setAttribute("src", url);
+				wv.setAttribute("partition", "persist:vscode");
+				wv.setAttribute("allowpopups", "");
+				wv.style.width = "100%";
+				wv.style.height = "100%";
+				wv.style.border = "none";
+				wv.addEventListener("did-finish-load", () => overlay.remove());
+				wv.addEventListener("did-fail-load", (e) => { 
+					if (e.isMainFrame === false) return;
+					if (e.errorCode === -3) return;
+					fail(
+						"Failed to load VS Code: " +
+							(e.errorDescription || e.errorCode),
+					);
+				});
+				dom.contentArea.appendChild(wv);
+				dom.webview = wv;
+			})
+			.catch((e) => fail(String(e)));
+	}
+
+	function createVscodeTile(cx, cy, folderPath) {
+		const tile = createCanvasTile("vscode", cx, cy, { folderPath });
+		spawnVscodeWebview(tile);
+		saveCanvasImmediate();
+		return tile;
+	}
+
 	function clearCanvas(viewportObj) {
 		const tileIds = tiles.map((t) => t.id);
 		for (const id of tileIds) {
@@ -782,11 +894,35 @@ export function createTileManager({
 						zIndex: saved.zIndex,
 						ptySessionId: saved.ptySessionId,
 						cwd: saved.cwd,
+						target: saved.target,
+						color: saved.color,
 						userTitle: saved.userTitle,
 						autoTitle: saved.autoTitle,
 					},
 				);
 				spawnTerminalWebview(tile);
+			} else if (saved.type === "docker") {
+				const tile = createCanvasTile(
+					"docker", cx, cy, {
+						id: saved.id,
+						width: saved.width,
+						height: saved.height,
+						zIndex: saved.zIndex,
+					},
+				);
+				spawnDockerWebview(tile);
+			} else if (saved.type === "vscode" && saved.folderPath) {
+				const tile = createCanvasTile(
+					"vscode", cx, cy, {
+						id: saved.id,
+						width: saved.width,
+						height: saved.height,
+						zIndex: saved.zIndex,
+						folderPath: saved.folderPath,
+						url: saved.url,
+					},
+				);
+				spawnVscodeWebview(tile);
 			} else if (saved.type === "graph" && saved.folderPath) {
 				const tile = createCanvasTile(
 					"graph", cx, cy, {
@@ -917,6 +1053,10 @@ export function createTileManager({
 		spawnBrowserWebview,
 		createFileTile,
 		createGraphTile,
+		spawnDockerWebview,
+		createDockerTile,
+		spawnVscodeWebview,
+		createVscodeTile,
 		clearCanvas,
 		detachAllTiles,
 		getCanvasStateForSave,

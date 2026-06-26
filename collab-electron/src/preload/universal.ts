@@ -206,6 +206,41 @@ contextBridge.exposeInMainWorld("api", {
     ipcRenderer.send("nav:reveal-in-finder", path),
   createGraphTile: (folderPath: string) =>
     ipcRenderer.send("nav:create-graph-tile", folderPath),
+
+  // IDE integration
+  detectIdes: () => ipcRenderer.invoke("ide:detect"),
+  openInIde: (path: string, ideId?: string) =>
+    ipcRenderer.send("ide:open", { path, ideId }),
+
+  // Embedded VS Code-like editor tile
+  openVscodeEmbedded: (folderPath: string) =>
+    ipcRenderer.send("vscode:open-embedded", folderPath),
+  editorGitStatus: (folder: string) =>
+    ipcRenderer.invoke("editor:git-status", folder),
+  editorGitStage: (folder: string, path: string) =>
+    ipcRenderer.invoke("editor:git-stage", folder, path),
+  editorGitStageAll: (folder: string) =>
+    ipcRenderer.invoke("editor:git-stage-all", folder),
+  editorGitUnstage: (folder: string, path: string) =>
+    ipcRenderer.invoke("editor:git-unstage", folder, path),
+  editorGitDiscard: (folder: string, path: string) =>
+    ipcRenderer.invoke("editor:git-discard", folder, path),
+  editorGitCommit: (folder: string, message: string) =>
+    ipcRenderer.invoke("editor:git-commit", folder, message),
+  editorFindFiles: (folder: string, query: string) =>
+    ipcRenderer.invoke("editor:find-files", folder, query),
+
+  // Docker
+  dockerAvailable: () => ipcRenderer.invoke("docker:available"),
+  dockerList: () => ipcRenderer.invoke("docker:list"),
+  dockerStart: (id: string) => ipcRenderer.invoke("docker:start", id),
+  dockerStop: (id: string) => ipcRenderer.invoke("docker:stop", id),
+  dockerRestart: (id: string) => ipcRenderer.invoke("docker:restart", id),
+  dockerOpenTerminal: (id: string, name: string) =>
+    ipcRenderer.send("docker:open-terminal", { id, name }),
+  dockerOpenLogs: (id: string, name: string) =>
+    ipcRenderer.send("docker:open-logs", { id, name }),
+  dockerOpenPanel: () => ipcRenderer.send("docker:open-panel"),
   runInTerminal: (command: string) =>
     ipcRenderer.send("viewer:run-in-terminal", command),
 

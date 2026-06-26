@@ -237,6 +237,7 @@ interface CodeEditorViewProps {
   theme: "light" | "dark";
   editingDisabled?: boolean;
   className?: string;
+  editorOptions?: monaco.editor.IEditorOptions;
 }
 
 export function CodeEditorView({
@@ -246,6 +247,7 @@ export function CodeEditorView({
   theme,
   editingDisabled = false,
   className,
+  editorOptions,
 }: CodeEditorViewProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const editorRef = useRef<monaco.editor.IStandaloneCodeEditor | null>(null);
@@ -280,6 +282,7 @@ export function CodeEditorView({
       readOnly: editingDisabled,
       padding: { top: 8 },
       tabSize: 2,
+      ...editorOptions,
     });
 
     editorRef.current = editor;
@@ -391,6 +394,10 @@ export function CodeEditorView({
   useEffect(() => {
     editorRef.current?.updateOptions({ readOnly: editingDisabled });
   }, [editingDisabled]);
+
+  useEffect(() => {
+    if (editorOptions) editorRef.current?.updateOptions(editorOptions);
+  }, [editorOptions]);
 
   // Handle external content changes (file watcher)
   useEffect(() => {

@@ -1559,6 +1559,76 @@ async function init() {
 					);
 					minimap.update();
 				}
+				if (
+					channel === "open-docker-terminal" ||
+					channel === "open-docker-logs"
+				) {
+					const containerId = args[0];
+					const containerName = args[1] || containerId;
+					const isLogs = channel === "open-docker-logs";
+					const target = isLogs
+						? `docker-logs:${containerId}`
+						: `docker:${containerId}`;
+					const title = isLogs
+						? `logs: ${containerName}`
+						: containerName;
+					// A container has a single log stream, so reuse an
+					// already-open logs tile instead of stacking duplicates.
+					if (isLogs) {
+						let existingId = null;
+						for (const [id] of tileManager.getTileDOMs()) {
+							const t = getTile(id);
+							if (t && t.type === "term" && t.target === target) {
+								existingId = id;
+								break;
+							}
+						}
+						if (existingId) {
+							tileManager.focusCanvasTile(existingId);
+							minimap.update();
+							return;
+						}
+					}
+					const size = getTerminalSize();
+					const rect = canvasEl.getBoundingClientRect();
+					const cx =
+						(rect.width / 2 - viewportState.panX) /
+						viewportState.zoom - size.width / 2;
+					const cy =
+						(rect.height / 2 - viewportState.panY) /
+						viewportState.zoom - size.height / 2;
+					const tile = tileManager.createCanvasTile(
+						"term", cx, cy, { target, userTitle: title, ...size },
+					);
+					tileManager.spawnTerminalWebview(tile, true);
+					tileManager.saveCanvasImmediate();
+					minimap.update();
+				}
+				if (channel === "create-docker-tile") {
+					const size = defaultSize("docker");
+					const rect = canvasEl.getBoundingClientRect();
+					const cx =
+						(rect.width / 2 - viewportState.panX) /
+						viewportState.zoom - size.width / 2;
+					const cy =
+						(rect.height / 2 - viewportState.panY) /
+						viewportState.zoom - size.height / 2;
+					tileManager.createDockerTile(cx, cy);
+					minimap.update();
+				}
+				if (channel === "create-vscode-tile") {
+					const folderPath = args[0];
+					const size = defaultSize("vscode");
+					const rect = canvasEl.getBoundingClientRect();
+					const cx =
+						(rect.width / 2 - viewportState.panX) /
+						viewportState.zoom - size.width / 2;
+					const cy =
+						(rect.height / 2 - viewportState.panY) /
+						viewportState.zoom - size.height / 2;
+					tileManager.createVscodeTile(cx, cy, folderPath);
+					minimap.update();
+				}
 			}
 		},
 	);

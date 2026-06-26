@@ -1,5 +1,5 @@
 /**
- * @typedef {'term' | 'note' | 'code' | 'image' | 'graph' | 'browser' | 'pdf'} TileType
+ * @typedef {'term' | 'note' | 'code' | 'image' | 'graph' | 'browser' | 'pdf' | 'docker' | 'vscode'} TileType
  *
  * @typedef {Object} Tile
  * @property {string} id
@@ -12,6 +12,8 @@
  * @property {string} [folderPath] - For graph tiles
  * @property {string} [url] - URL for browser tiles
  * @property {string} [cwd] - Working directory for terminal tiles
+ * @property {string} [target] - Session kind for terminal tiles (e.g. docker:<id>)
+ * @property {string} [color] - User-chosen accent color for terminal tiles (hex)
  * @property {string} [ptySessionId] - PTY session ID for terminal tiles
  * @property {string} [userTitle] - Manual title override set by user
  * @property {string} [autoTitle] - Auto-computed title from terminal session
@@ -31,6 +33,8 @@ const DEFAULT_TILE_SIZES = {
 	graph: { width: 600, height: 500 },
 	browser: { width: 800, height: 650 },
 	pdf: { width: 600, height: 800 },
+	docker: { width: 460, height: 520 },
+	vscode: { width: 900, height: 640 },
 };
 
 /** @param {TileType} type */

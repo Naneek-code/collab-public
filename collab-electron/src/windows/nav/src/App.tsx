@@ -29,6 +29,7 @@ import {
 	isSubpath,
 	parentPath,
 } from '@collab/shared/path-utils';
+import { DockerSection } from './DockerSection';
 
 const PLATFORM = window.api.getPlatform();
 
@@ -690,6 +691,20 @@ export default function App() {
 	const inlineRenameRef = useRef(inlineRename);
 	inlineRenameRef.current = inlineRename;
 
+	// Installed code editors (VS Code / Cursor / Windsurf / …), detected once.
+	// Read from a ref inside the context-menu builder so it needs no deps.
+	const idesRef = useRef<Array<{ id: string; label: string }>>([]);
+	useEffect(() => {
+		window.api
+			.detectIdes?.()
+			.then((ides) => {
+				idesRef.current = ides ?? [];
+			})
+			.catch(() => {
+				idesRef.current = [];
+			});
+	}, []);
+
 	const dragDrop = useDragDrop(
 		async (
 			sourcePaths: string[],
@@ -914,11 +929,56 @@ export default function App() {
 				];
 			}
 
+			const ideItems = idesRef.current.map((ide) => ({
+				id: `open-ide:${ide.id}`,
+				label: `Open in ${ide.label} (window)`,
+			}));
+			const onlyFolder =
+				!item ||
+				item.kind === 'folder' ||
+				item.kind === 'workspace';
+			if (onlyFolder) {
+				ideItems.unshift({
+					id: 'open-vscode-embedded',
+					label: 'Open VS Code here',
+				});
+			}
+			if (ideItems.length > 0) {
+				const idx = menuItems.findIndex(
+					(m) => m.id === 'terminal',
+				);
+				if (idx !== -1) {
+					menuItems.splice(idx + 1, 0, ...ideItems);
+				}
+			}
+
 			const action =
 				await window.api.showContextMenu(
 					menuItems,
 				);
 			if (!action) return;
+
+			if (
+				action.startsWith('open-ide:') ||
+				action === 'open-vscode-embedded'
+			) {
+				const target = !item
+					? wsPaths[0] ?? ''
+					: item.kind === 'folder' ||
+							item.kind === 'workspace'
+						? item.path
+						: parentPath(item.path);
+				if (!target) return;
+				if (action === 'open-vscode-embedded') {
+					window.api.openVscodeEmbedded(target);
+				} else {
+					window.api.openInIde(
+						target,
+						action.slice('open-ide:'.length),
+					);
+				}
+				return;
+			}
 
 			const parentFolder = !item
 				? wsPaths[0] ?? ''
@@ -1504,6 +1564,7 @@ export default function App() {
 						</div>
 					)}
 			</div>
+			<DockerSection />
 			{importModal && (
 				<ImportWebArticleModal
 					folderPath={
