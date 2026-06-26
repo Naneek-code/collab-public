@@ -19,7 +19,10 @@ import { createWorkspaceBar } from "./workspace-bar.js";
 import { updateTileTitle, getTileLabel } from "./tile-renderer.js";
 
 const CANVAS_DBLCLICK_SUPPRESS_MS = 500;
-const IS_WINDOWS = window.shellApi.getPlatform() === "win32";
+const platform = window.shellApi.getPlatform();
+const IS_WINDOWS = platform === "win32";
+const IS_DARWIN = platform === "darwin";
+const IS_LINUX = platform === "linux";
 
 const viewportState = { panX: 0, panY: 0, zoom: 1 };
 
@@ -29,6 +32,10 @@ canvasEl.tabIndex = -1;
 
 document.documentElement.classList.toggle("platform-win", IS_WINDOWS);
 document.body.classList.toggle("platform-win", IS_WINDOWS);
+document.documentElement.classList.toggle("platform-darwin", IS_DARWIN);
+document.body.classList.toggle("platform-darwin", IS_DARWIN);
+document.documentElement.classList.toggle("platform-linux", IS_LINUX);
+document.body.classList.toggle("platform-linux", IS_LINUX);
 
 // -- Windows window controls --
 
