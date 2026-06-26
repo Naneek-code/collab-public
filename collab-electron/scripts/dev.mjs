@@ -33,12 +33,13 @@ const child = process.platform === "win32"
         },
       },
     )
-  : spawn(process.execPath, ["x", "electron-vite", "dev"], {
+  : spawn(process.execPath, ["x", "electron-vite", "dev", ...process.argv.slice(2)], {
       stdio: "inherit",
       cwd: repoDir,
       env: {
         ...process.env,
         COLLAB_DEV_WORKTREE_ROOT: repoDir,
+        ...(process.platform === "linux" ? { ELECTRON_DISABLE_SANDBOX: "1" } : {}),
       },
     });
 
