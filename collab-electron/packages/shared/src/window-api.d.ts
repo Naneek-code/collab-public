@@ -383,7 +383,9 @@ export interface CollabApi {
   editorGitStage: (folder: string, path: string) => Promise<GitResult>;
   editorGitStageAll: (folder: string) => Promise<GitResult>;
   editorGitUnstage: (folder: string, path: string) => Promise<GitResult>;
+  editorGitUnstageAll: (folder: string) => Promise<GitResult>;
   editorGitDiscard: (folder: string, path: string) => Promise<GitResult>;
+  editorGitDiscardAll: (folder: string) => Promise<GitResult>;
   editorGitCommit: (folder: string, message: string) => Promise<GitResult>;
   editorFindFiles: (folder: string, query: string) => Promise<string[]>;
   editorGitShow: (folder: string, path: string) => Promise<string>;

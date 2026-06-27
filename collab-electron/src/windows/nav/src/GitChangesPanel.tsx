@@ -107,7 +107,22 @@ export function GitChangesPanel({
 
             {staged.length > 0 && (
               <div className="git-section">
-                <div className="git-section-title">Staged Changes ({staged.length})</div>
+                <div className="git-section-title">
+                  <span>Staged Changes ({staged.length})</span>
+                  <div className="git-section-actions">
+                    <button
+                      type="button"
+                      data-tooltip="Unstage all files"
+                      onClick={(e) =>
+                        handleAction(e, () =>
+                          window.api.editorGitUnstageAll(wsPath)
+                        )
+                      }
+                    >
+                      <Minus size={10} weight="bold" />
+                    </button>
+                  </div>
+                </div>
                 {staged.map((file) => (
                   <div
                     key={file.path}
@@ -139,7 +154,34 @@ export function GitChangesPanel({
 
             {changes.length > 0 && (
               <div className="git-section">
-                <div className="git-section-title">Changes ({changes.length})</div>
+                <div className="git-section-title">
+                  <span>Changes ({changes.length})</span>
+                  <div className="git-section-actions">
+                    <button
+                      type="button"
+                      data-tooltip="Discard all changes"
+                      onClick={(e) => {
+                        if (!confirm("Discard all unstaged changes? This action cannot be undone.")) return;
+                        void handleAction(e, () =>
+                          window.api.editorGitDiscardAll(wsPath)
+                        );
+                      }}
+                    >
+                      <ArrowUUpLeft size={10} weight="bold" />
+                    </button>
+                    <button
+                      type="button"
+                      data-tooltip="Stage all changes"
+                      onClick={(e) =>
+                        handleAction(e, () =>
+                          window.api.editorGitStageAll(wsPath)
+                        )
+                      }
+                    >
+                      <Plus size={10} weight="bold" />
+                    </button>
+                  </div>
+                </div>
                 {changes.map((file) => (
                   <div
                     key={file.path}

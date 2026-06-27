@@ -225,8 +225,12 @@ contextBridge.exposeInMainWorld("api", {
     ipcRenderer.invoke("editor:git-stage-all", folder),
   editorGitUnstage: (folder: string, path: string) =>
     ipcRenderer.invoke("editor:git-unstage", folder, path),
+  editorGitUnstageAll: (folder: string) =>
+    ipcRenderer.invoke("editor:git-unstage-all", folder),
   editorGitDiscard: (folder: string, path: string) =>
     ipcRenderer.invoke("editor:git-discard", folder, path),
+  editorGitDiscardAll: (folder: string) =>
+    ipcRenderer.invoke("editor:git-discard-all", folder),
   editorGitCommit: (folder: string, message: string) =>
     ipcRenderer.invoke("editor:git-commit", folder, message),
   editorFindFiles: (folder: string, query: string) =>

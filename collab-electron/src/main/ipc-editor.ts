@@ -157,10 +157,18 @@ export function registerEditorHandlers(): void {
       gitRun(folder, ["reset", "-q", "HEAD", "--", path]),
   );
 
+  ipcMain.handle("editor:git-unstage-all", (_event, folder: string) =>
+    gitRun(folder, ["reset", "-q", "HEAD"]),
+  );
+
   ipcMain.handle(
     "editor:git-discard",
     (_event, folder: string, path: string) =>
       gitRun(folder, ["checkout", "--", path]),
+  );
+
+  ipcMain.handle("editor:git-discard-all", (_event, folder: string) =>
+    gitRun(folder, ["checkout", "--", "."]),
   );
 
   ipcMain.handle(

@@ -51,12 +51,39 @@
 }
 
 .git-section-title {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
   font-size: 0.7rem;
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.5px;
   color: color-mix(in srgb, var(--foreground) 40%, transparent);
   margin-bottom: 4px;
+}
+
+.git-section-actions {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.git-section-actions button {
+  background: transparent;
+  border: none;
+  color: color-mix(in srgb, var(--foreground) 50%, transparent);
+  border-radius: 3px;
+  padding: 2px 6px;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.15s ease;
+}
+
+.git-section-actions button:hover {
+  background: var(--color-hover);
+  color: var(--foreground);
 }
 
 .git-file-row {
