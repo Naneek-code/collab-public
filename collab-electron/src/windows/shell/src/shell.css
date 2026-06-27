@@ -534,6 +534,15 @@ body.titlebar-collapsed #panels {
 	-webkit-app-region: no-drag;
 }
 
+.hidden-panel {
+	position: absolute !important;
+	opacity: 0 !important;
+	pointer-events: none !important;
+	width: 0 !important;
+	height: 0 !important;
+	overflow: hidden !important;
+}
+
 .mode-btn {
 	flex: 1;
 	text-align: center;

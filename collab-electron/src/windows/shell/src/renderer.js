@@ -586,7 +586,7 @@ async function init() {
 
 	const tileListContainer = document.createElement("div");
 	tileListContainer.id = "tile-list-container";
-	tileListContainer.style.display = "none";
+	tileListContainer.style.display = "flex";
 	tileListContainer.style.flex = "1";
 	tileListContainer.style.minHeight = "0";
 	panelNav.appendChild(tileListContainer);
@@ -597,10 +597,8 @@ async function init() {
 	);
 
 	function updateSidebarContent(mode) {
-		fileTreeContainer.style.display =
-			mode === "files" ? "flex" : "none";
-		tileListContainer.style.display =
-			mode === "tiles" ? "flex" : "none";
+		fileTreeContainer.classList.toggle("hidden-panel", mode !== "files");
+		tileListContainer.classList.toggle("hidden-panel", mode !== "tiles");
 	}
 	updateSidebarContent(panelManager.getMode());
 
