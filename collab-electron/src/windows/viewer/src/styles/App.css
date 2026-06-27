@@ -1311,7 +1311,7 @@ html:not(.dark) .image-view-banner-key {
 }
 
 .diff-toggle-btn.active {
-	background: var(--color-primary);
-	border-color: var(--color-primary);
-	color: var(--color-primary-foreground) !important;
+	background: var(--primary);
+	border-color: var(--primary);
+	color: var(--primary-foreground) !important;
 }

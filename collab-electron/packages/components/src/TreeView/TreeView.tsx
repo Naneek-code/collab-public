@@ -26,6 +26,27 @@ import { useImageThumbnail } from './useImageThumbnail';
 const ICON_SIZE = 14;
 export const ENABLE_GRAPH_TILES = false;
 
+function getFolderGitStatus(
+	folderPath: string,
+	gitStatuses?: Record<string, 'modified' | 'added' | 'untracked'>
+): 'modified' | 'added' | 'untracked' | undefined {
+	if (!gitStatuses) return undefined;
+	const prefix = folderPath.endsWith('/') || folderPath.endsWith('\\') ? folderPath : folderPath + (folderPath.includes('\\') ? '\\' : '/');
+	let folderGitStatus: 'modified' | 'added' | 'untracked' | undefined = undefined;
+	for (const [filePath, status] of Object.entries(gitStatuses)) {
+		if (filePath.startsWith(prefix)) {
+			if (status === 'modified') {
+				return 'modified';
+			} else if (status === 'added') {
+				folderGitStatus = 'added';
+			} else if (status === 'untracked' && !folderGitStatus) {
+				folderGitStatus = 'untracked';
+			}
+		}
+	}
+	return folderGitStatus;
+}
+
 interface FolderRowProps {
 	item: FlatItem;
 	onToggle: (
@@ -68,6 +89,7 @@ interface FolderRowProps {
 	isFirstWorkspace?: boolean;
 	dimmed?: boolean;
 	hideChevron?: boolean;
+	gitStatus?: 'modified' | 'added' | 'untracked';
 }
 
 export const FolderRow = React.memo(function FolderRow({
@@ -94,6 +116,7 @@ export const FolderRow = React.memo(function FolderRow({
 	isFirstWorkspace = false,
 	dimmed = false,
 	hideChevron = false,
+	gitStatus,
 }: FolderRowProps) {
 	const style: React.CSSProperties = isWorkspace
 		? {
@@ -106,7 +129,7 @@ export const FolderRow = React.memo(function FolderRow({
 			paddingLeft: `${item.level * 14}px`,
 		};
 
-	const className = `collection-tree-row collection-folder-row${isDropTarget ? ' drop-target' : ''}${isWorkspace ? ' workspace-folder-row' : ''}${dimmed ? ' dimmed' : ''}`;
+	const className = `collection-tree-row collection-folder-row${isDropTarget ? ' drop-target' : ''}${isWorkspace ? ' workspace-folder-row' : ''}${dimmed ? ' dimmed' : ''}${gitStatus ? ` git-${gitStatus}` : ''}`;
 
 	return (
 		<div
@@ -186,6 +209,11 @@ export const FolderRow = React.memo(function FolderRow({
 			{item.childCount != null && (
 				<span className="collection-tree-count">
 					{item.childCount}
+				</span>
+			)}
+			{gitStatus && (
+				<span className={`git-status-badge git-status-${gitStatus}`}>
+					{gitStatus === 'modified' ? 'M' : gitStatus === 'added' ? 'A' : 'U'}
 				</span>
 			)}
 			<button
@@ -592,6 +620,7 @@ export const TreeView: React.FC<
 						>
 							<FolderRow
 								item={item}
+								gitStatus={getFolderGitStatus(item.path, gitStatuses)}
 								onToggle={onToggleFolder}
 								onCreateFile={
 									onCreateFile
@@ -659,6 +688,7 @@ export const TreeView: React.FC<
 						<FolderRow
 							key={item.id}
 							item={item}
+							gitStatus={getFolderGitStatus(item.path, gitStatuses)}
 							onToggle={onToggleFolder}
 							onCreateFile={onCreateFile}
 							onPlusClick={onPlusClick}
