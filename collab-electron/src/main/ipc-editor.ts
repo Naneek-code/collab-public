@@ -174,4 +174,16 @@ export function registerEditorHandlers(): void {
     (_event, folder: string, query: string): Promise<string[]> =>
       findFiles(folder, query),
   );
+
+  ipcMain.handle(
+    "editor:git-show",
+    async (_event, folder: string, path: string): Promise<string> => {
+      try {
+        const out = await git(folder, ["show", `HEAD:${path}`]);
+        return out.stdout;
+      } catch {
+        return "";
+      }
+    },
+  );
 }

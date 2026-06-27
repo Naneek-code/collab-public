@@ -1,0 +1,193 @@
+.git-changes-panel {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  overflow-y: auto;
+  overflow-x: hidden;
+  background: var(--bg);
+  color: var(--foreground);
+  font-family: var(--font-sans);
+  padding: 12px;
+  gap: 16px;
+}
+
+.git-ws-icon {
+  color: var(--color-primary);
+  flex-shrink: 0;
+}
+
+.git-ws-group {
+  display: flex;
+  flex-direction: column;
+  border-bottom: 1px solid color-mix(in srgb, var(--foreground) 8%, transparent);
+  padding-bottom: 16px;
+}
+
+.git-ws-group:last-child {
+  border-bottom: none;
+}
+
+.git-ws-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--foreground);
+  margin-bottom: 8px;
+}
+
+.git-ws-branch {
+  font-size: 0.75rem;
+  font-weight: 400;
+  color: color-mix(in srgb, var(--foreground) 50%, transparent);
+}
+
+.git-section {
+  display: flex;
+  flex-direction: column;
+  margin-top: 8px;
+  gap: 4px;
+}
+
+.git-section-title {
+  font-size: 0.7rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: color-mix(in srgb, var(--foreground) 40%, transparent);
+  margin-bottom: 4px;
+}
+
+.git-file-row {
+  display: flex;
+  align-items: center;
+  padding: 4px 8px;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 0.75rem;
+  transition: background 0.15s ease;
+  position: relative;
+  gap: 8px;
+}
+
+.git-file-row:hover {
+  background: color-mix(in srgb, var(--foreground) 6%, transparent);
+}
+
+.git-file-name {
+  font-weight: 500;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.git-file-path {
+  font-size: 0.65rem;
+  color: color-mix(in srgb, var(--foreground) 45%, transparent);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  flex: 1;
+}
+
+.git-row-actions {
+  display: none;
+  align-items: center;
+  gap: 4px;
+}
+
+.git-file-row:hover .git-row-actions {
+  display: flex;
+}
+
+.git-row-actions button {
+  background: transparent;
+  border: none;
+  color: var(--color-text-secondary);
+  border-radius: 3px;
+  padding: 2px 6px;
+  font-size: 0.75rem;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.15s ease;
+}
+
+.git-row-actions button:hover {
+  background: var(--color-hover);
+  color: var(--foreground);
+}
+
+.git-status-char {
+  font-size: 0.7rem;
+  font-weight: 700;
+  width: 14px;
+  text-align: center;
+}
+
+.git-file-row:hover .git-status-char {
+  display: none;
+}
+
+.index-stage {
+  color: #73c990;
+}
+
+.worktree-modified {
+  color: #e2c08d;
+}
+
+.worktree-untracked {
+  color: #73c990;
+}
+
+.git-ws-empty {
+  font-size: 0.75rem;
+  color: color-mix(in srgb, var(--foreground) 40%, transparent);
+  padding: 8px 4px;
+  font-style: italic;
+}
+
+.git-commit-box {
+  display: flex;
+  margin-top: 12px;
+  gap: 6px;
+}
+
+.git-commit-box input {
+  flex: 1;
+  font-size: 0.75rem;
+  padding: 6px 8px;
+  background: color-mix(in srgb, var(--foreground) 4%, transparent);
+  border: 1px solid color-mix(in srgb, var(--foreground) 12%, transparent);
+  border-radius: 4px;
+  color: var(--foreground);
+  outline: none;
+}
+
+.git-commit-box input:focus {
+  border-color: var(--color-primary);
+}
+
+.git-commit-box button {
+  background: var(--color-primary);
+  border: none;
+  color: var(--color-primary-foreground);
+  border-radius: 4px;
+  padding: 6px 12px;
+  font-size: 0.75rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: opacity 0.15s ease;
+}
+
+.git-commit-box button:hover {
+  opacity: 0.9;
+}
+
+.git-commit-box button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}

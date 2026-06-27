@@ -318,7 +318,7 @@ async function init() {
 		label: "Navigator",
 		defaultWidth: 280,
 		direction: 1,
-		validModes: ["closed", "files", "tiles"],
+		validModes: ["closed", "files", "tiles", "git"],
 		prefKey: "sidebar-mode",
 		getAllWebviews,
 		onVisibilityChanged(visible) {
@@ -597,8 +597,9 @@ async function init() {
 	);
 
 	function updateSidebarContent(mode) {
-		fileTreeContainer.classList.toggle("hidden-panel", mode !== "files");
+		fileTreeContainer.classList.toggle("hidden-panel", mode !== "files" && mode !== "git");
 		tileListContainer.classList.toggle("hidden-panel", mode !== "tiles");
+		navWebview.send("set-view-mode", mode);
 	}
 	updateSidebarContent(panelManager.getMode());
 
@@ -618,7 +619,8 @@ async function init() {
 			const targetMode = btn.dataset.mode;
 			if (
 				targetMode === "files" ||
-				targetMode === "tiles"
+				targetMode === "tiles" ||
+				targetMode === "git"
 			) {
 				panelManager.setMode(targetMode);
 			}

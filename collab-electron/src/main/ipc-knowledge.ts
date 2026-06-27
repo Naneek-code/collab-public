@@ -56,7 +56,7 @@ export function registerKnowledgeHandlers(
   );
 
   // Navigation
-  ipcMain.on("nav:select-file", (_event, path) => {
+  ipcMain.on("nav:select-file", (_event, path, viewDiff) => {
     if (path) {
       ctx.trackEvent("file_selected", {
         ext: extname(path),
@@ -69,8 +69,8 @@ export function registerKnowledgeHandlers(
         agentActivity.setWorkspacePath(workspace);
       }
     }
-    ctx.forwardToWebview("viewer", "file-selected", path);
-    ctx.forwardToWebview("nav", "file-selected", path);
+    ctx.forwardToWebview("viewer", "file-selected", path, viewDiff);
+    ctx.forwardToWebview("nav", "file-selected", path, viewDiff);
   });
 
   ipcMain.on(

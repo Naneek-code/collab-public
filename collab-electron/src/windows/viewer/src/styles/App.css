@@ -1290,3 +1290,28 @@ html:not(.dark) .image-view-banner-key {
 	/* margin: 0; */
 	/* gap: 0; */
 }
+
+/* Git Diff Toggle Button Styling */
+.diff-toggle-btn {
+	background: color-mix(in srgb, var(--color-foreground) 8%, transparent);
+	border: 1px solid color-mix(in srgb, var(--color-foreground) 15%, transparent);
+	color: var(--color-foreground);
+	border-radius: 4px;
+	padding: 2px 8px;
+	cursor: pointer;
+	font-family: var(--font-sans);
+	font-size: 0.7rem;
+	font-weight: 500;
+	transition: all 0.2s ease;
+	margin-left: auto;
+}
+
+.diff-toggle-btn:hover {
+	background: color-mix(in srgb, var(--color-foreground) 15%, transparent);
+}
+
+.diff-toggle-btn.active {
+	background: var(--color-primary);
+	border-color: var(--color-primary);
+	color: var(--color-primary-foreground) !important;
+}

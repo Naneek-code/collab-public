@@ -616,3 +616,27 @@
 	flex: 1;
 	height: 1.4em;
 }
+
+/* Git Status Styling */
+.collection-item-row.git-modified .item-text {
+  color: #e2c08d;
+}
+.collection-item-row.git-added .item-text,
+.collection-item-row.git-untracked .item-text {
+  color: #73c990;
+}
+
+.git-status-badge {
+  font-size: 10px;
+  font-weight: 700;
+  margin-left: 6px;
+  margin-right: 4px;
+  opacity: 0.8;
+}
+.git-status-modified {
+  color: #e2c08d;
+}
+.git-status-added,
+.git-status-untracked {
+  color: #73c990;
+}

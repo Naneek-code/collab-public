@@ -69,6 +69,7 @@ export interface WorkspaceTreeProps {
 	listView?: boolean;
 	initialExpandAll?: boolean;
 	onExpandAllComplete?: (wsPath: string) => void;
+	gitStatuses?: Record<string, 'modified' | 'added' | 'untracked'>;
 }
 
 function flattenAllFiles(
@@ -134,6 +135,7 @@ export const WorkspaceTree = forwardRef<
 		listView = false,
 		initialExpandAll = false,
 		onExpandAllComplete,
+		gitStatuses,
 	},
 	ref,
 ) {
@@ -389,6 +391,7 @@ export const WorkspaceTree = forwardRef<
 							workspacePath={workspace.path}
 							onSelectFolder={onSelectFolder}
 							searchQuery={searchQuery}
+							gitStatuses={gitStatuses}
 						/>
 					</div>
 				))
@@ -422,6 +425,7 @@ export const WorkspaceTree = forwardRef<
 					workspacePath={workspace.path}
 					onSelectFolder={onSelectFolder}
 					searchQuery={searchQuery}
+					gitStatuses={gitStatuses}
 				/>
 			) : null}
 			{(isExpanded || isSearching) &&

@@ -180,8 +180,8 @@ contextBridge.exposeInMainWorld("api", {
     ipcRenderer.invoke("workspace-pref:set", { key, value, workspacePath }),
 
   // Nav + Viewer
-  selectFile: (path: string | null) =>
-    ipcRenderer.send("nav:select-file", path),
+  selectFile: (path: string | null, viewDiff?: boolean) =>
+    ipcRenderer.send("nav:select-file", path, viewDiff),
 
   // Nav
   readDir: (path: string) =>
@@ -229,6 +229,8 @@ contextBridge.exposeInMainWorld("api", {
     ipcRenderer.invoke("editor:git-commit", folder, message),
   editorFindFiles: (folder: string, query: string) =>
     ipcRenderer.invoke("editor:find-files", folder, query),
+  editorGitShow: (folder: string, path: string) =>
+    ipcRenderer.invoke("editor:git-show", folder, path),
 
   // Docker
   dockerAvailable: () => ipcRenderer.invoke("docker:available"),
@@ -516,6 +518,11 @@ contextBridge.exposeInMainWorld("api", {
     ipcRenderer.on("workspace-added", handler);
     return () =>
       ipcRenderer.removeListener("workspace-added", handler);
+  },
+  onSetViewMode: (cb: (mode: string) => void) => {
+    const handler = (_event: unknown, mode: string) => cb(mode);
+    ipcRenderer.on("set-view-mode", handler);
+    return () => ipcRenderer.removeListener("set-view-mode", handler);
   },
   onWorkspaceRemoved: (cb: (path: string) => void) => {
     const handler = (

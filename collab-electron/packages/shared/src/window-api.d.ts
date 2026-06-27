@@ -223,7 +223,7 @@ export interface CollabApi {
   setTheme: (mode: string) => Promise<void>;
 
   // File selection
-  selectFile: (path: string | null) => void;
+  selectFile: (path: string | null, viewDiff?: boolean) => void;
 
   // Folder selection
   selectFolder: (path: string) => void;
@@ -385,6 +385,7 @@ export interface CollabApi {
   editorGitDiscard: (folder: string, path: string) => Promise<GitResult>;
   editorGitCommit: (folder: string, message: string) => Promise<GitResult>;
   editorFindFiles: (folder: string, query: string) => Promise<string[]>;
+  editorGitShow: (folder: string, path: string) => Promise<string>;
 
   // Docker
   dockerAvailable: () => Promise<DockerAvailability>;
@@ -454,6 +455,9 @@ export interface CollabApi {
   ) => Unsubscribe;
   onWorkspaceRemoved: (
     cb: (path: string) => void,
+  ) => Unsubscribe;
+  onSetViewMode: (
+    cb: (mode: string) => void,
   ) => Unsubscribe;
   onWikilinksUpdated: (
     cb: (paths: string[]) => void,

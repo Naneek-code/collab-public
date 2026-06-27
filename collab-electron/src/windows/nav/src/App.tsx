@@ -30,6 +30,7 @@ import {
 	parentPath,
 } from '@collab/shared/path-utils';
 import { DockerSection } from './DockerSection';
+import { GitChangesPanel } from './GitChangesPanel';
 
 const PLATFORM = window.api.getPlatform();
 
@@ -223,6 +224,63 @@ export default function App() {
 		useState<Set<string>>(new Set());
 	const [pendingExpandAll, setPendingExpandAll] =
 		useState<Set<string>>(new Set());
+
+	const [gitStatusData, setGitStatusData] = useState<Record<string, any>>({});
+	const [viewMode, setViewMode] = useState<string>('files');
+
+	const pollGitStatus = useCallback(async () => {
+		if (workspacePaths.length === 0) return;
+		const newStatuses: Record<string, any> = {};
+		for (const wsPath of workspacePaths) {
+			try {
+				const status = await window.api.editorGitStatus(wsPath);
+				if (status) {
+					newStatuses[wsPath] = status;
+				}
+			} catch (err) {
+				console.error("Failed to fetch git status for", wsPath, err);
+			}
+		}
+		setGitStatusData(newStatuses);
+	}, [workspacePaths]);
+
+	useEffect(() => {
+		pollGitStatus();
+		const interval = setInterval(pollGitStatus, 4000);
+		return () => clearInterval(interval);
+	}, [pollGitStatus]);
+
+	const gitStatuses = useMemo(() => {
+		const flat: Record<string, 'modified' | 'added' | 'untracked'> = {};
+		for (const [wsPath, data] of Object.entries(gitStatusData)) {
+			if (data && data.files) {
+				const sep = wsPath.includes('\\') ? '\\' : '/';
+				for (const file of data.files) {
+					let type: 'modified' | 'added' | 'untracked' = 'modified';
+					if (file.index === 'A' || file.worktree === 'A') {
+						type = 'added';
+					} else if (file.worktree === '?') {
+						type = 'untracked';
+					}
+					const normalizedFilePath = file.path.replace(/\//g, sep);
+					const absPath = `${wsPath}${sep}${normalizedFilePath}`;
+					flat[absPath] = type;
+				}
+			}
+		}
+		return flat;
+	}, [gitStatusData]);
+
+	useEffect(() => {
+		window.api.getPref("sidebar-mode").then((mode) => {
+			if (typeof mode === "string" && (mode === "files" || mode === "tiles" || mode === "git")) {
+				setViewMode(mode);
+			}
+		});
+		return window.api.onSetViewMode((mode) => {
+			setViewMode(mode);
+		});
+	}, []);
 
 	// Refs for each workspace's imperative handle
 	const workspaceRefsMap = useRef(
@@ -1390,6 +1448,13 @@ export default function App() {
 				)}
 
 				{!loading && !error && (
+					viewMode === 'git' ? (
+						<GitChangesPanel
+							workspacePaths={workspacePaths}
+							gitStatusData={gitStatusData}
+							onRefresh={pollGitStatus}
+						/>
+					) : (
 						<div className="table-container items-table">
 							<SearchSortControls
 								ref={
@@ -1471,6 +1536,7 @@ export default function App() {
 												workspace={
 													ws
 												}
+												gitStatuses={gitStatuses}
 												isExpanded={expandedWorkspaces.has(
 													ws.path,
 												)}
@@ -1562,7 +1628,8 @@ export default function App() {
 								</div>
 							</div>
 						</div>
-					)}
+					)
+				)}
 			</div>
 			<DockerSection />
 			{importModal && (

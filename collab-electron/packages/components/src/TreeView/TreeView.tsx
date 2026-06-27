@@ -262,6 +262,7 @@ export interface FileRowProps {
 	) => void;
 	onDragEnd?: () => void;
 	sortMode?: SortMode;
+	gitStatus?: 'modified' | 'added' | 'untracked';
 }
 
 export const FileRow = React.memo(
@@ -283,6 +284,7 @@ export const FileRow = React.memo(
 		onDragStart,
 		onDragEnd,
 		sortMode,
+		gitStatus,
 	}: FileRowProps) {
 		const slash = item.name.lastIndexOf('/');
 		const isSearchResult = slash >= 0;
@@ -299,7 +301,7 @@ export const FileRow = React.memo(
 		return (
 			<div
 				data-item-id={item.path}
-				className={`collection-tree-row collection-item-row${isSelected ? ' isFocused' : ''}${isMultiSelected ? ' isMultiSelected' : ''}`}
+				className={`collection-tree-row collection-item-row${isSelected ? ' isFocused' : ''}${isMultiSelected ? ' isMultiSelected' : ''}${gitStatus ? ` git-${gitStatus}` : ''}`}
 				style={{
 					paddingLeft: `${item.level * 14}px`,
 				}}
@@ -390,6 +392,11 @@ export const FileRow = React.memo(
 						)}
 					</span>
 				)}
+				{gitStatus && (
+					<span className={`git-status-badge git-status-${gitStatus}`}>
+						{gitStatus === 'modified' ? 'M' : gitStatus === 'added' ? 'A' : 'U'}
+					</span>
+				)}
 				<div className="row-action-buttons">
 					{showTimestamp && (
 						<span className="row-timestamp">
@@ -417,7 +424,8 @@ export const FileRow = React.memo(
 		prev.onContextMenu === next.onContextMenu &&
 		prev.onDragStart === next.onDragStart &&
 		prev.onDragEnd === next.onDragEnd &&
-		prev.sortMode === next.sortMode,
+		prev.sortMode === next.sortMode &&
+		prev.gitStatus === next.gitStatus,
 );
 
 interface TreeViewProps {
@@ -468,6 +476,7 @@ interface TreeViewProps {
 	workspacePath?: string;
 	onSelectFolder?: (path: string) => void;
 	searchQuery?: string;
+	gitStatuses?: Record<string, 'modified' | 'added' | 'untracked'>;
 }
 
 export const TreeView: React.FC<
@@ -497,6 +506,7 @@ export const TreeView: React.FC<
 	onDragEnd,
 	workspacePath,
 	onSelectFolder,
+	gitStatuses,
 }) => {
 		const [deleteConfirmId, setDeleteConfirmId] =
 			useState<string | null>(null);
@@ -713,6 +723,7 @@ export const TreeView: React.FC<
 								deleteConfirmId ===
 								item.path
 							}
+							gitStatus={gitStatuses?.[item.path]}
 							onItemClick={onItemClick}
 							onDelete={handleDelete}
 							onDeleteCancel={

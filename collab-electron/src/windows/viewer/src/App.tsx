@@ -15,6 +15,8 @@ import "@collab/components/Editor/Blocknote.css";
 import "@collab/components/Editor/WikiLink.css";
 import { CodeEditorView } from "@collab/components/CodeEditorView";
 import "@collab/components/CodeEditorView/CodeEditorView.css";
+import { CodeDiffView } from "@collab/components/CodeDiffView";
+import "@collab/components/CodeDiffView/CodeDiffView.css";
 import { isImageFile } from "@collab/shared/image";
 import { isPdfFile } from "@collab/shared/pdf";
 import { toCollabFileUrl } from "@collab/shared/collab-file-url";
@@ -94,12 +96,41 @@ export default function App() {
 		mtime: string;
 	} | null>(null);
 	const [fileError, setFileError] = useState<string | null>(null);
+	const [diffMode, setDiffMode] = useState(false);
+	const [gitOriginalContent, setGitOriginalContent] = useState("");
 	const isRenamingRef = useRef(false);
 	const fileMtimeRef = useRef<string | null>(null);
 	const selectedPathRef = useRef(selectedPath);
 	const latestLoadTokenRef = useRef<symbol | null>(null);
 	const mainRef = useRef<HTMLElement>(null);
 	selectedPathRef.current = selectedPath;
+
+	useEffect(() => {
+		setDiffMode(false);
+		setGitOriginalContent("");
+	}, [loadedPath]);
+
+	const handleToggleDiff = async () => {
+		if (diffMode) {
+			setDiffMode(false);
+		} else {
+			if (!workspacePath || !loadedPath) return;
+			let relPath = loadedPath;
+			if (loadedPath.startsWith(workspacePath)) {
+				relPath = loadedPath.slice(workspacePath.length);
+				if (relPath.startsWith("/") || relPath.startsWith("\\")) {
+					relPath = relPath.slice(1);
+				}
+			}
+			try {
+				const original = await window.api.editorGitShow(workspacePath, relPath);
+				setGitOriginalContent(original);
+				setDiffMode(true);
+			} catch (err) {
+				console.error("Failed to load original file from git:", err);
+			}
+		}
+	};
 
 	const [isTileMode] = useState(
 		() => new URLSearchParams(window.location.search).has("tilePath"),
@@ -148,14 +179,28 @@ export default function App() {
 	// File selection is now restored via the onFileSelected IPC event
 	// sent by the shell on mount — no separate getSelectedFile needed.
 
-	// Listen for file selection from nav view (singleton viewer only)
 	useEffect(() => {
 		if (isTileMode) return;
-		return window.api.onFileSelected((path) => {
+		return window.api.onFileSelected((path, viewDiff) => {
 			setSelectedPath(path);
 			setFocusedFolder(null);
+			if (viewDiff && workspacePath && path) {
+				let relPath = path;
+				if (path.startsWith(workspacePath)) {
+					relPath = path.slice(workspacePath.length);
+					if (relPath.startsWith("/") || relPath.startsWith("\\")) {
+						relPath = relPath.slice(1);
+					}
+				}
+				window.api.editorGitShow(workspacePath, relPath).then((original) => {
+					setGitOriginalContent(original);
+					setDiffMode(true);
+				}).catch((err) => {
+					console.error("Failed to load original file from git on selection:", err);
+				});
+			}
 		});
-	}, []);
+	}, [workspacePath]);
 
 	// Listen for folder selection from nav view
 	useEffect(() => {
@@ -553,6 +598,15 @@ export default function App() {
 							<span className="filepath-parent">{parent}</span>
 							<span className="filepath-name">{name}</span>
 						</span>
+						{hasCodeFile && (
+							<button
+								type="button"
+								className={`diff-toggle-btn${diffMode ? " active" : ""}`}
+								onClick={handleToggleDiff}
+							>
+								{diffMode ? "📝 View Code" : "🔍 View Git Diff"}
+							</button>
+						)}
 					</div>
 				);
 			})()}
@@ -606,14 +660,24 @@ export default function App() {
 				)}
 				{hasCodeFile && displayedPath && (
 					<>
-						<CodeEditorView
-							filePath={displayedPath}
-							content={fileContent}
-							onContentChange={saveCodeContent}
-							theme={theme}
-							editingDisabled={editingDisabled}
-							className={isTileMode ? "canvas-tile-embed" : undefined}
-						/>
+						{diffMode ? (
+							<CodeDiffView
+								filePath={displayedPath}
+								originalContent={gitOriginalContent}
+								modifiedContent={fileContent}
+								theme={theme}
+								className={isTileMode ? "canvas-tile-embed" : undefined}
+							/>
+						) : (
+							<CodeEditorView
+								filePath={displayedPath}
+								content={fileContent}
+								onContentChange={saveCodeContent}
+								theme={theme}
+								editingDisabled={editingDisabled}
+								className={isTileMode ? "canvas-tile-embed" : undefined}
+							/>
+						)}
 					</>
 				)}
 				{hasImageFile && displayedPath && (
