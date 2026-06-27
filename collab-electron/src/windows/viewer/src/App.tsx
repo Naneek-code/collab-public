@@ -105,9 +105,15 @@ export default function App() {
 	const mainRef = useRef<HTMLElement>(null);
 	selectedPathRef.current = selectedPath;
 
+	const shouldOpenDiffRef = useRef(false);
+
 	useEffect(() => {
-		setDiffMode(false);
-		setGitOriginalContent("");
+		if (shouldOpenDiffRef.current) {
+			shouldOpenDiffRef.current = false;
+		} else {
+			setDiffMode(false);
+			setGitOriginalContent("");
+		}
 	}, [loadedPath]);
 
 	const handleToggleDiff = async () => {
@@ -185,6 +191,7 @@ export default function App() {
 			setSelectedPath(path);
 			setFocusedFolder(null);
 			if (viewDiff && workspacePath && path) {
+				shouldOpenDiffRef.current = true;
 				let relPath = path;
 				if (path.startsWith(workspacePath)) {
 					relPath = path.slice(workspacePath.length);

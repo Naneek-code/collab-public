@@ -477,15 +477,21 @@ export default function App() {
 
 	useEffect(() => {
 		window.api
-			.getConfig()
-			.then((cfg) => {
-				setWorkspacePaths(cfg.workspaces);
+			.workspaceList()
+			.then((res) => {
+				setWorkspacePaths(res.workspaces);
 				setLoading(false);
 			})
 			.catch((err) => {
 				setError(String(err));
 				setLoading(false);
 			});
+	}, []);
+
+	useEffect(() => {
+		return window.api.onWorkspaceInit((paths) => {
+			setWorkspacePaths(paths);
+		});
 	}, []);
 
 	useEffect(() => {

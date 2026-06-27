@@ -179,6 +179,8 @@ contextBridge.exposeInMainWorld("api", {
   setWorkspacePref: (key: string, value: unknown, workspacePath: string) =>
     ipcRenderer.invoke("workspace-pref:set", { key, value, workspacePath }),
 
+  workspaceList: () => ipcRenderer.invoke("workspace:list"),
+
   // Nav + Viewer
   selectFile: (path: string | null, viewDiff?: boolean) =>
     ipcRenderer.send("nav:select-file", path, viewDiff),
@@ -452,11 +454,12 @@ contextBridge.exposeInMainWorld("api", {
     return () =>
       ipcRenderer.removeListener("focus-search", handler);
   },
-  onFileSelected: (cb: (path: string | null) => void) => {
+  onFileSelected: (cb: (path: string | null, viewDiff?: boolean) => void) => {
     const handler = (
       _event: unknown,
       path: string | null,
-    ) => cb(path);
+      viewDiff?: boolean,
+    ) => cb(path, viewDiff);
     ipcRenderer.on("file-selected", handler);
     return () =>
       ipcRenderer.removeListener("file-selected", handler);
@@ -518,6 +521,11 @@ contextBridge.exposeInMainWorld("api", {
     ipcRenderer.on("workspace-added", handler);
     return () =>
       ipcRenderer.removeListener("workspace-added", handler);
+  },
+  onWorkspaceInit: (cb: (paths: string[]) => void) => {
+    const handler = (_event: unknown, paths: string[]) => cb(paths);
+    ipcRenderer.on("workspace-init", handler);
+    return () => ipcRenderer.removeListener("workspace-init", handler);
   },
   onSetViewMode: (cb: (mode: string) => void) => {
     const handler = (_event: unknown, mode: string) => cb(mode);

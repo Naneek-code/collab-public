@@ -459,5 +459,6 @@ export function useWorkspaceFileTree(
 		expandRecursive,
 		collapseAllDirs,
 		navigableItems,
+		isLoaded: dirContents.has(workspacePath),
 	};
 }

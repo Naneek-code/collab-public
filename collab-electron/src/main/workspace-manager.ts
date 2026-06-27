@@ -76,6 +76,7 @@ interface WorkspaceFile {
   meta: WorkspaceMeta;
   tabs: TabState[];
   activeTabId: string;
+  folders?: string[];
 }
 
 interface IndexFile {
@@ -196,7 +197,12 @@ function migrate(raw: unknown): WorkspaceFile | null {
   if (!activeTabId || !tabs.some((t) => t.id === activeTabId)) {
     activeTabId = tabs[0]!.id;
   }
-  return { meta, tabs, activeTabId };
+
+  const folders = Array.isArray(r.folders)
+    ? (r.folders as unknown[]).filter((p): p is string => typeof p === "string")
+    : [];
+
+  return { meta, tabs, activeTabId, folders };
 }
 
 async function writeWorkspace(file: WorkspaceFile): Promise<void> {
@@ -510,4 +516,22 @@ export async function loadActiveState(): Promise<CanvasState | null> {
 export async function saveActiveState(state: CanvasState): Promise<void> {
   const ref = await activeRef();
   if (ref) await saveTabState(ref.workspaceId, ref.tabId, state);
+}
+
+export async function getActiveWorkspaceId(): Promise<string | null> {
+  const idx = await loadIndex();
+  return idx.activeId;
+}
+
+export async function getWorkspaceFolders(id: string): Promise<string[]> {
+  const file = await readWorkspace(id);
+  return file?.folders ?? [];
+}
+
+export async function setWorkspaceFolders(id: string, folders: string[]): Promise<void> {
+  const file = await readWorkspace(id);
+  if (file) {
+    file.folders = folders;
+    await writeWorkspace(file);
+  }
 }

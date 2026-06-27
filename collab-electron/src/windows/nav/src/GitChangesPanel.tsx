@@ -114,14 +114,14 @@ export function GitChangesPanel({
                     className="git-file-row"
                     onClick={() => handleRowClick(file)}
                   >
-                    <span className="git-file-name" title={file.path}>
+                    <span className="git-file-name" data-tooltip={file.path}>
                       {file.path.split("/").pop()}
                     </span>
                     <span className="git-file-path">{file.path}</span>
                     <span className="git-row-actions">
                       <button
                         type="button"
-                        title="Unstage file"
+                        data-tooltip="Unstage file"
                         onClick={(e) =>
                           handleAction(e, () =>
                             window.api.editorGitUnstage(wsPath, file.path)
@@ -146,14 +146,14 @@ export function GitChangesPanel({
                     className="git-file-row"
                     onClick={() => handleRowClick(file)}
                   >
-                    <span className="git-file-name" title={file.path}>
+                    <span className="git-file-name" data-tooltip={file.path}>
                       {file.path.split("/").pop()}
                     </span>
                     <span className="git-file-path">{file.path}</span>
                     <span className="git-row-actions">
                       <button
                         type="button"
-                        title="Discard changes"
+                        data-tooltip="Discard changes"
                         onClick={(e) => {
                           if (!confirm(`Discard changes in ${file.path}?`)) return;
                           void handleAction(e, () =>
@@ -165,7 +165,7 @@ export function GitChangesPanel({
                       </button>
                       <button
                         type="button"
-                        title="Stage changes"
+                        data-tooltip="Stage changes"
                         onClick={(e) =>
                           handleAction(e, () =>
                             window.api.editorGitStage(wsPath, file.path)

@@ -27,6 +27,11 @@ import * as watcher from "./watcher";
 import * as wikilinkIndex from "./wikilink-index";
 import { trackEvent } from "./analytics";
 import type { TreeNode } from "@collab/shared/types";
+import {
+  getActiveWorkspaceId,
+  getWorkspaceFolders,
+  setWorkspaceFolders,
+} from "./workspace-manager";
 
 export interface IpcWorkspaceContext {
   mainWindow: () => BrowserWindow | null;
@@ -269,8 +274,26 @@ export function registerWorkspaceHandlers(
     },
   );
 
-  ipcMain.handle("workspace:list", () => ({
-    workspaces: appConfig.workspaces,
+  async function getActiveFolders(): Promise<string[]> {
+    const activeId = await getActiveWorkspaceId();
+    if (activeId) {
+      return getWorkspaceFolders(activeId);
+    }
+    return appConfig.workspaces;
+  }
+
+  async function setActiveFolders(folders: string[]): Promise<void> {
+    const activeId = await getActiveWorkspaceId();
+    if (activeId) {
+      await setWorkspaceFolders(activeId, folders);
+    } else {
+      appConfig.workspaces = folders;
+      saveConfig(appConfig);
+    }
+  }
+
+  ipcMain.handle("workspace:list", async () => ({
+    workspaces: await getActiveFolders(),
   }));
 
   ipcMain.handle("workspace:add", async () => {
@@ -284,8 +307,9 @@ export function registerWorkspaceHandlers(
     }
     const chosen = realpathSync(result.filePaths[0]!);
 
-    if (appConfig.workspaces.includes(chosen)) {
-      return { workspaces: appConfig.workspaces };
+    const folders = await getActiveFolders();
+    if (folders.includes(chosen)) {
+      return { workspaces: folders };
     }
 
     const collabDir = join(chosen, ".collaborator");
@@ -294,8 +318,8 @@ export function registerWorkspaceHandlers(
       initWorkspaceFiles(chosen);
     }
 
-    appConfig.workspaces.push(chosen);
-    saveConfig(appConfig);
+    folders.push(chosen);
+    await setActiveFolders(folders);
     trackEvent("workspace_added", { is_new: isNew });
 
     startSingleWorkspaceServices(chosen, (f) => {
@@ -303,19 +327,20 @@ export function registerWorkspaceHandlers(
     });
     ctx.forwardToWebview("nav", "workspace-added", chosen);
 
-    return { workspaces: appConfig.workspaces };
+    return { workspaces: folders };
   });
 
   ipcMain.handle(
     "workspace:remove",
-    (_event, index: number) => {
-      if (index < 0 || index >= appConfig.workspaces.length) {
-        return { workspaces: appConfig.workspaces };
+    async (_event, index: number) => {
+      const folders = await getActiveFolders();
+      if (index < 0 || index >= folders.length) {
+        return { workspaces: folders };
       }
 
-      const removedPath = appConfig.workspaces[index]!;
-      appConfig.workspaces.splice(index, 1);
-      saveConfig(appConfig);
+      const removedPath = folders[index]!;
+      folders.splice(index, 1);
+      await setActiveFolders(folders);
       trackEvent("workspace_removed");
 
       stopSingleWorkspaceServices(removedPath);
@@ -325,20 +350,21 @@ export function registerWorkspaceHandlers(
         removedPath,
       );
 
-      return { workspaces: appConfig.workspaces };
+      return { workspaces: folders };
     },
   );
 
   ipcMain.handle(
     "workspace:remove-by-path",
-    (_event, path: string) => {
-      const index = appConfig.workspaces.indexOf(path);
+    async (_event, path: string) => {
+      const folders = await getActiveFolders();
+      const index = folders.indexOf(path);
       if (index === -1) {
-        return { workspaces: appConfig.workspaces };
+        return { workspaces: folders };
       }
 
-      appConfig.workspaces.splice(index, 1);
-      saveConfig(appConfig);
+      folders.splice(index, 1);
+      await setActiveFolders(folders);
       trackEvent("workspace_removed");
 
       stopSingleWorkspaceServices(path);
@@ -348,7 +374,7 @@ export function registerWorkspaceHandlers(
         path,
       );
 
-      return { workspaces: appConfig.workspaces };
+      return { workspaces: folders };
     },
   );
 

@@ -146,13 +146,11 @@ export function CodeDiffView({
 
     const originalModel = monaco.editor.createModel(
       originalContent,
-      language,
-      monaco.Uri.parse(`git-diff://original/${filePath}`)
+      language
     );
     const modifiedModel = monaco.editor.createModel(
       modifiedContent,
-      language,
-      monaco.Uri.parse(`git-diff://modified/${filePath}`)
+      language
     );
 
     const diffEditor = monaco.editor.createDiffEditor(containerRef.current, {

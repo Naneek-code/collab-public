@@ -224,6 +224,7 @@ export interface CollabApi {
 
   // File selection
   selectFile: (path: string | null, viewDiff?: boolean) => void;
+  workspaceList: () => Promise<{ workspaces: string[] }>;
 
   // Folder selection
   selectFolder: (path: string) => void;
@@ -431,7 +432,7 @@ export interface CollabApi {
   // IPC event listeners
   onFocusSearch: (cb: () => void) => Unsubscribe;
   onFileSelected: (
-    cb: (path: string | null) => void,
+    cb: (path: string | null, viewDiff?: boolean) => void,
   ) => Unsubscribe;
   onFolderSelected: (
     cb: (path: string) => void,
@@ -455,6 +456,9 @@ export interface CollabApi {
   ) => Unsubscribe;
   onWorkspaceRemoved: (
     cb: (path: string) => void,
+  ) => Unsubscribe;
+  onWorkspaceInit: (
+    cb: (paths: string[]) => void,
   ) => Unsubscribe;
   onSetViewMode: (
     cb: (mode: string) => void,

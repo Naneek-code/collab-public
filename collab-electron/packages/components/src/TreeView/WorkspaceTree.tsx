@@ -147,6 +147,7 @@ export const WorkspaceTree = forwardRef<
 		expandRecursive,
 		collapseAllDirs,
 		navigableItems,
+		isLoaded,
 	} = useWorkspaceFileTree(
 		workspace.path,
 		sortMode,
@@ -431,7 +432,7 @@ export const WorkspaceTree = forwardRef<
 			{(isExpanded || isSearching) &&
 				filteredItems.length === 0 && (
 					<div className="search-no-matches">
-						No matching files
+						{isLoaded ? "No matching files" : "Loading..."}
 					</div>
 				)}
 		</div>

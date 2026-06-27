@@ -2118,6 +2118,10 @@ async function init() {
 		const tabId = t.activeTabId ?? t.tabs[0]?.id ?? null;
 		await applyTab(workspaceId, tabId);
 		tileManager.endTransition();
+
+		// Notify sidebar to reload folders list for this active workspace
+		const workspaceData = await window.shellApi.workspaceList();
+		navWebview.send("workspace-init", workspaceData.workspaces);
 	}
 
 	async function newWorkspace() {
