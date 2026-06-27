@@ -467,20 +467,8 @@ function isCaretOnLastLine(el: HTMLElement): boolean {
 // than the one-time startup banner, so detection survives a session reconnect
 // and works on any shell. `text` is the last ~25 visible rows.
 function looksLikeClaude(text: string): boolean {
-  if (/[╭╮╰╯]/.test(text)) return true;
-  if (
-    /\besc to interrupt\b|\?\s*for shortcuts|auto-?accept edits|auto mode on|⏵⏵|bypass permissions|plan mode on|for agents\b|to cycle\)/i.test(
-      text,
-    )
-  ) {
-    return true;
-  }
-  if (/\[[^\]\n]*\b(opus|sonnet|haiku)\b[^\]\n]*\]/i.test(text)) return true;
-  // Startup banner — present before any input box or status line is painted,
-  // and model-agnostic (works for non-Claude models routed through the CLI).
-  if (/\bClaude Code v\d/i.test(text)) return true;
-  if (/press ctrl-?c again/i.test(text)) return true;
-  return false;
+  // Check for Claude Code signature output on screen
+  return /\bClaude Code v\d/i.test(text);
 }
 
 const ClaudePrompt = React.memo(({ sessionId, term }: ClaudePromptProps) => {

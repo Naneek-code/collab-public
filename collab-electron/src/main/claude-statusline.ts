@@ -65,6 +65,10 @@ function writeScripts(): void {
 }
 
 export function enableProbe(): { ok: boolean; error?: string } {
+  if (!existsSync(CLAUDE_DIR)) {
+    return { ok: true };
+  }
+
   const settings = readSettings();
   if (settings === null) {
     return { ok: false, error: "Could not parse ~/.claude/settings.json" };

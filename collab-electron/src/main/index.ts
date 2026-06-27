@@ -534,6 +534,16 @@ function createWindow(): void {
   mainWindow.on("maximize", sendMaximizeState);
   mainWindow.on("unmaximize", sendMaximizeState);
 
+  const sendFullscreenState = () => {
+    if (!mainWindow || mainWindow.isDestroyed()) return;
+    mainWindow.webContents.send(
+      "window:fullscreen-changed",
+      mainWindow.isFullScreen(),
+    );
+  };
+  mainWindow.on("enter-full-screen", sendFullscreenState);
+  mainWindow.on("leave-full-screen", sendFullscreenState);
+
   // Fires only on real OS-level focus changes (not when a child <webview>
   // guest takes focus within the window), so the renderer can restore focus
   // to the active tile when returning from another app — e.g. a clipboard
@@ -593,6 +603,16 @@ ipcMain.on("window:close", (event) => {
 
 ipcMain.handle("window:is-maximized", (event) =>
   BrowserWindow.fromWebContents(event.sender)?.isMaximized() ?? false,
+);
+
+ipcMain.on("window:fullscreen-toggle", (event) => {
+  const win = BrowserWindow.fromWebContents(event.sender);
+  if (!win) return;
+  win.setFullScreen(!win.isFullScreen());
+});
+
+ipcMain.handle("window:is-fullscreen", (event) =>
+  BrowserWindow.fromWebContents(event.sender)?.isFullScreen() ?? false,
 );
 
 ipcMain.handle("shell:get-view-config", () => {
