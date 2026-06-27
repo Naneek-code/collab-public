@@ -441,6 +441,14 @@ function pollClaudeSessionFiles(): void {
 export function initClaudeState(window: BrowserWindow): void {
   mainWindow = window;
 
+  ipcMain.handle(
+    "claude:get-state",
+    (_event, ptySessionId: string): ClaudeStructuredState | null => {
+      const session = tracked.get(ptySessionId);
+      return session?.state ?? null;
+    },
+  );
+
   if (!existsSync(CLAUDE_DIR)) return;
 
   void pollAll();
@@ -449,14 +457,6 @@ export function initClaudeState(window: BrowserWindow): void {
     void pollAll();
     pollClaudeSessionFiles();
   }, POLL_MS);
-
-  ipcMain.handle(
-    "claude:get-state",
-    (_event, ptySessionId: string): ClaudeStructuredState | null => {
-      const session = tracked.get(ptySessionId);
-      return session?.state ?? null;
-    },
-  );
 
   mainWindow.on("closed", () => {
     clearInterval(timer);

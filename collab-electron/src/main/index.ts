@@ -73,6 +73,10 @@ if (!process.env.LANG || !process.env.LANG.includes("UTF-8")) {
   process.env.LANG = "en_US.UTF-8";
 }
 
+if (process.platform === "linux") {
+  app.commandLine.appendSwitch("no-sandbox");
+}
+
 process.on("uncaughtException", (error) => {
   trackEvent("app_crash", {
     type: "uncaughtException",
