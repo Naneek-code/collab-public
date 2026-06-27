@@ -198,12 +198,57 @@ body.platform-darwin {
 	background: color-mix(in srgb, var(--fg) 9%, transparent);
 }
 
-.platform-win #workspace-switch-btn {
+.platform-win #settings-btn,
+.platform-linux #settings-btn {
 	margin-left: 12px;
 }
 
-body:not(.platform-win) #workspace-switch-btn {
+.platform-darwin #settings-btn {
 	margin-left: 78px;
+}
+
+#workspace-switch-btn {
+	margin-left: 6px !important;
+}
+
+#fullscreen-btn {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	width: 28px;
+	height: 24px;
+	margin-left: 6px;
+	flex-shrink: 0;
+	border: 1px solid var(--border);
+	border-radius: 6px;
+	background: transparent;
+	color: var(--muted);
+	cursor: pointer;
+	-webkit-app-region: no-drag;
+	transition: color 0.12s ease, background 0.12s ease;
+}
+
+#fullscreen-btn svg {
+	width: 14px;
+	height: 14px;
+	display: block;
+}
+
+#fullscreen-btn:hover {
+	color: var(--fg);
+	background: color-mix(in srgb, var(--fg) 9%, transparent);
+}
+
+#fullscreen-btn:active {
+	transform: scale(0.94);
+}
+
+#fullscreen-btn.is-fullscreen .icon-fs-enter {
+	display: none !important;
+}
+
+#fullscreen-btn.is-fullscreen .icon-fs-exit {
+	display: block !important;
 }
 
 #tab-strip {
@@ -569,29 +614,25 @@ body.titlebar-collapsed #panels {
 }
 
 #settings-btn {
-	position: absolute;
-	top: 6px;
-	right: 10px;
-	z-index: 601;
-	-webkit-app-region: no-drag;
 	display: flex;
 	align-items: center;
 	justify-content: center;
-	width: 24px;
+	width: 28px;
 	height: 24px;
 	padding: 0;
-	border: none;
+	border: 1px solid var(--border);
 	border-radius: 6px;
 	background: transparent;
 	color: var(--muted);
 	cursor: pointer;
-	transition: color 0.15s ease, background 0.15s ease;
+	-webkit-app-region: no-drag;
+	transition: color 0.12s ease, background 0.12s ease;
 	flex-shrink: 0;
 }
 
 #settings-btn:hover {
 	color: var(--fg);
-	background: color-mix(in srgb, var(--fg) 8%, transparent);
+	background: color-mix(in srgb, var(--fg) 9%, transparent);
 }
 
 #settings-btn:active {

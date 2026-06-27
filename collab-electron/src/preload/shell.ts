@@ -319,6 +319,15 @@ contextBridge.exposeInMainWorld("shellApi", {
     return () =>
       ipcRenderer.removeListener("window:maximize-changed", handler);
   },
+  windowFullscreenToggle: () => ipcRenderer.send("window:fullscreen-toggle"),
+  windowIsFullscreen: (): Promise<boolean> =>
+    ipcRenderer.invoke("window:is-fullscreen"),
+  onWindowFullscreenChange: (cb: (fullscreen: boolean) => void) => {
+    const handler = (_event: unknown, fullscreen: boolean) => cb(fullscreen);
+    ipcRenderer.on("window:fullscreen-changed", handler);
+    return () =>
+      ipcRenderer.removeListener("window:fullscreen-changed", handler);
+  },
 
   ptyKillSession: (sessionId: string): Promise<void> =>
     ipcRenderer.invoke("pty:kill", { sessionId }),

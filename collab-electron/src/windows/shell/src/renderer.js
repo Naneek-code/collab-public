@@ -57,6 +57,19 @@ if (IS_WINDOWS) {
 	window.shellApi.onWindowMaximizeChange(syncMaximized);
 }
 
+const fsButton = document.getElementById("fullscreen-btn");
+if (fsButton) {
+	fsButton.addEventListener("click", () => {
+		window.shellApi.windowFullscreenToggle();
+	});
+
+	const syncFullscreen = (isFullscreen) => {
+		fsButton.classList.toggle("is-fullscreen", isFullscreen);
+	};
+	window.shellApi.windowIsFullscreen().then(syncFullscreen);
+	window.shellApi.onWindowFullscreenChange(syncFullscreen);
+}
+
 // -- Edge toggles: reveal on hover near their position --
 
 {
