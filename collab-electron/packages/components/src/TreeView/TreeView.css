@@ -618,11 +618,14 @@
 }
 
 /* Git Status Styling */
-.collection-item-row.git-modified .item-text {
+.collection-item-row.git-modified .item-text,
+.collection-folder-row.git-modified .collection-tree-name {
   color: #e2c08d;
 }
 .collection-item-row.git-added .item-text,
-.collection-item-row.git-untracked .item-text {
+.collection-item-row.git-untracked .item-text,
+.collection-folder-row.git-added .collection-tree-name,
+.collection-folder-row.git-untracked .collection-tree-name {
   color: #73c990;
 }
 
