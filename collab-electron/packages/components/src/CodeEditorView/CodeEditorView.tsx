@@ -145,6 +145,7 @@ const SHARED_TS_COMPILER_OPTIONS: MonacoCompilerOptions = {
   skipLibCheck: true,
   strict: true,
   target: monacoTypeScript.typescript.ScriptTarget.ESNext,
+  noResolve: true,
 };
 
 const SHARED_TS_DIAGNOSTICS: MonacoDiagnosticsOptions = {

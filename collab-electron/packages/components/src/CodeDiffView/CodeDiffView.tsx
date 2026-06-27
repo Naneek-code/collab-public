@@ -73,6 +73,17 @@ try {
       'editorStickyScroll.shadow': '#00000000',
     },
   });
+
+  if (monaco.languages.typescript) {
+    monaco.languages.typescript.typescriptDefaults.setCompilerOptions({
+      ...monaco.languages.typescript.typescriptDefaults.getCompilerOptions(),
+      noResolve: true,
+    });
+    monaco.languages.typescript.javascriptDefaults.setCompilerOptions({
+      ...monaco.languages.typescript.javascriptDefaults.getCompilerOptions(),
+      noResolve: true,
+    });
+  }
 } catch {
   // Ignore if already defined
 }
@@ -146,11 +157,13 @@ export function CodeDiffView({
 
     const originalModel = monaco.editor.createModel(
       originalContent,
-      language
+      language,
+      monaco.Uri.parse(`git-diff-original://${filePath}`)
     );
     const modifiedModel = monaco.editor.createModel(
       modifiedContent,
-      language
+      language,
+      monaco.Uri.parse(`git-diff-modified://${filePath}`)
     );
 
     const diffEditor = monaco.editor.createDiffEditor(containerRef.current, {
