@@ -88,13 +88,14 @@ export default function App() {
 	const [selectedPath, setSelectedPath] = useState<string | null>(null);
 	const [focusedFolder, setFocusedFolder] = useState<string | null>(null);
 	const [workspacePath, setWorkspacePath] = useState<string | null>(null);
-	const [fileContent, setFileContent] = useState("");
-	const lastWrittenContentRef = useRef<string | null>(null);
 	const [loadedPath, setLoadedPath] = useState<string | null>(null);
 	const [fileStats, setFileStats] = useState<{
 		ctime: string;
 		mtime: string;
 	} | null>(null);
+	const [workspaceFolders, setWorkspaceFolders] = useState<string[]>([]);
+	const [fileContent, setFileContent] = useState("");
+	const lastWrittenContentRef = useRef<string | null>(null);
 	const [fileError, setFileError] = useState<string | null>(null);
 	const [diffMode, setDiffMode] = useState(false);
 	const [gitOriginalContent, setGitOriginalContent] = useState("");
@@ -116,20 +117,32 @@ export default function App() {
 		}
 	}, [loadedPath]);
 
+	const getWorkspacePathForFile = (filePath: string | null): string | null => {
+		if (!filePath) return null;
+		for (const folder of workspaceFolders) {
+			const prefix = folder.endsWith("/") || folder.endsWith("\\") ? folder : folder + (folder.includes("\\") ? "\\" : "/");
+			if (filePath.startsWith(folder) || filePath.startsWith(prefix)) {
+				return folder;
+			}
+		}
+		return workspaceFolders[0] ?? null;
+	};
+
 	const handleToggleDiff = async () => {
 		if (diffMode) {
 			setDiffMode(false);
 		} else {
-			if (!workspacePath || !loadedPath) return;
+			const wsPath = getWorkspacePathForFile(loadedPath);
+			if (!wsPath || !loadedPath) return;
 			let relPath = loadedPath;
-			if (loadedPath.startsWith(workspacePath)) {
-				relPath = loadedPath.slice(workspacePath.length);
+			if (loadedPath.startsWith(wsPath)) {
+				relPath = loadedPath.slice(wsPath.length);
 				if (relPath.startsWith("/") || relPath.startsWith("\\")) {
 					relPath = relPath.slice(1);
 				}
 			}
 			try {
-				const original = await window.api.editorGitShow(workspacePath, relPath);
+				const original = await window.api.editorGitShow(wsPath, relPath);
 				setGitOriginalContent(original);
 				setDiffMode(true);
 			} catch (err) {
@@ -151,11 +164,10 @@ export default function App() {
 		}
 	}, []);
 
-	// Load workspace path on mount
+	// Load workspace paths on mount
 	useEffect(() => {
-		window.api.getConfig().then((config) => {
-			const active = config.workspaces?.[0];
-			if (active) setWorkspacePath(active);
+		window.api.workspaceList().then((res) => {
+			setWorkspaceFolders(res.workspaces);
 		});
 	}, []);
 
@@ -165,21 +177,12 @@ export default function App() {
 		});
 	}, []);
 
-	// Keep workspace path in sync when workspaces change (singleton viewer only)
+	// Keep workspace paths in sync when workspaces change (singleton viewer only)
 	useEffect(() => {
 		if (isTileMode) return;
-		const refresh = () => {
-			window.api.getConfig().then((config) => {
-				const active = config.workspaces?.[0];
-				setWorkspacePath((prev) => {
-					if (prev !== (active ?? null)) setSelectedPath(null);
-					return active ?? null;
-				});
-			});
-		};
-		const unsub1 = window.api.onWorkspaceAdded(refresh);
-		const unsub2 = window.api.onWorkspaceRemoved(refresh);
-		return () => { unsub1(); unsub2(); };
+		return window.api.onWorkspaceInit((folders) => {
+			setWorkspaceFolders(folders);
+		});
 	}, []);
 
 	// File selection is now restored via the onFileSelected IPC event
@@ -190,16 +193,17 @@ export default function App() {
 		return window.api.onFileSelected((path, viewDiff) => {
 			setSelectedPath(path);
 			setFocusedFolder(null);
-			if (viewDiff && workspacePath && path) {
+			const wsPath = getWorkspacePathForFile(path);
+			if (viewDiff && wsPath && path) {
 				shouldOpenDiffRef.current = true;
 				let relPath = path;
-				if (path.startsWith(workspacePath)) {
-					relPath = path.slice(workspacePath.length);
+				if (path.startsWith(wsPath)) {
+					relPath = path.slice(wsPath.length);
 					if (relPath.startsWith("/") || relPath.startsWith("\\")) {
 						relPath = relPath.slice(1);
 					}
 				}
-				window.api.editorGitShow(workspacePath, relPath).then((original) => {
+				window.api.editorGitShow(wsPath, relPath).then((original) => {
 					setGitOriginalContent(original);
 					setDiffMode(true);
 				}).catch((err) => {
@@ -207,7 +211,7 @@ export default function App() {
 				});
 			}
 		});
-	}, [workspacePath]);
+	}, [workspaceFolders]);
 
 	// Listen for folder selection from nav view
 	useEffect(() => {
