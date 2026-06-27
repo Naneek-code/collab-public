@@ -322,7 +322,7 @@ body:not(.platform-win) #workspace-switch-btn {
 	position: fixed;
 	top: calc(var(--toolbar-height) + 4px);
 	left: 8px;
-	z-index: 200;
+	z-index: 2000;
 	min-width: 240px;
 	padding: 6px;
 	background: var(--bg);
