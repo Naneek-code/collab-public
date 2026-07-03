@@ -2135,6 +2135,7 @@ async function init() {
 		// Notify sidebar to reload folders list for this active workspace
 		const workspaceData = await window.shellApi.workspaceList();
 		navWebview.send("workspace-init", workspaceData.workspaces);
+		singletonViewer.send("workspace-init", workspaceData.workspaces);
 	}
 
 	async function newWorkspace() {
@@ -2183,6 +2184,9 @@ async function init() {
 	// -- Initialize workspaces --
 
 	navWebview.send(
+		"workspace-init", workspaceData.workspaces,
+	);
+	singletonViewer.send(
 		"workspace-init", workspaceData.workspaces,
 	);
 
