@@ -209,8 +209,6 @@ export function registerEditorHandlers(): void {
         }
         const gitRelPath = relPath.replace(/\\/g, "/");
 
-        console.log(`[git-show] Resolved Git Root: ${gitRoot}, Relative Path: ${gitRelPath}`);
-
         const out = await execFileAsync("git", ["show", `HEAD:${gitRelPath}`], {
           cwd: gitRoot,
           timeout: 5000,
