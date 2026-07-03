@@ -1454,14 +1454,18 @@ export default function App() {
 				)}
 
 				{!loading && !error && (
-					viewMode === 'git' ? (
-						<GitChangesPanel
-							workspacePaths={workspacePaths}
-							gitStatusData={gitStatusData}
-							onRefresh={pollGitStatus}
-						/>
-					) : (
-						<div className="table-container items-table">
+					<>
+						<div style={{ display: viewMode === 'git' ? 'block' : 'none', height: '100%', overflow: 'hidden' }}>
+							<GitChangesPanel
+								workspacePaths={workspacePaths}
+								gitStatusData={gitStatusData}
+								onRefresh={pollGitStatus}
+							/>
+						</div>
+						<div
+							className="table-container items-table"
+							style={{ display: viewMode !== 'git' ? 'flex' : 'none', height: '100%', flexDirection: 'column' }}
+						>
 							<SearchSortControls
 								ref={
 									treeSearchRef
@@ -1634,7 +1638,7 @@ export default function App() {
 								</div>
 							</div>
 						</div>
-					)
+					</>
 				)}
 			</div>
 			<DockerSection />
