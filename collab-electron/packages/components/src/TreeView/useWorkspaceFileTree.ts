@@ -39,6 +39,9 @@ export function useWorkspaceFileTree(
 	const [expandedDirs, setExpandedDirs] = useState<
 		Set<string>
 	>(new Set);
+	const [loadingDirs, setLoadingDirs] = useState<
+		Set<string>
+	>(new Set);
 	const dirContentsRef = useRef(dirContents);
 	dirContentsRef.current = dirContents;
 	const currentWorkspacePathRef = useRef(workspacePath);
@@ -57,6 +60,13 @@ export function useWorkspaceFileTree(
 			) {
 				return [];
 			}
+
+			setLoadingDirs((prev) => {
+				if (prev.has(dirPath)) return prev;
+				const next = new Set(prev);
+				next.add(dirPath);
+				return next;
+			});
 
 			const pending =
 				pendingLoadsRef.current.get(dirPath);
@@ -172,6 +182,12 @@ export function useWorkspaceFileTree(
 					pendingLoadsRef.current.delete(
 						dirPath,
 					);
+					setLoadingDirs((prev) => {
+						if (!prev.has(dirPath)) return prev;
+						const next = new Set(prev);
+						next.delete(dirPath);
+						return next;
+					});
 					if (
 						dirtyDirsRef.current.delete(
 							dirPath,
@@ -496,5 +512,6 @@ export function useWorkspaceFileTree(
 		collapseAllDirs,
 		navigableItems,
 		isLoaded: dirContents.has(workspacePath),
+		loadingDirs,
 	};
 }

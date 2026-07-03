@@ -362,6 +362,17 @@
 	opacity: 0.5;
 }
 
+.caret-loading-spinner {
+	animation: caret-spin 1s linear infinite;
+	color: var(--color-primary);
+}
+
+@keyframes caret-spin {
+	100% {
+		transform: rotate(360deg);
+	}
+}
+
 .collection-tree-icon {
 	display: flex;
 	align-items: center;

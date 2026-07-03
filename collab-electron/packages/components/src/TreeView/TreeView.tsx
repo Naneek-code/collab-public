@@ -90,6 +90,7 @@ interface FolderRowProps {
 	dimmed?: boolean;
 	hideChevron?: boolean;
 	gitStatus?: 'modified' | 'added' | 'untracked';
+	isLoading?: boolean;
 }
 
 export const FolderRow = React.memo(function FolderRow({
@@ -117,6 +118,7 @@ export const FolderRow = React.memo(function FolderRow({
 	dimmed = false,
 	hideChevron = false,
 	gitStatus,
+	isLoading = false,
 }: FolderRowProps) {
 	const style: React.CSSProperties = isWorkspace
 		? {
@@ -155,8 +157,13 @@ export const FolderRow = React.memo(function FolderRow({
 				onContextMenu?.(e, item);
 			}}
 		>
-			<span className="collection-tree-caret" style={hideChevron ? { visibility: 'hidden' } : undefined}>
-				{item.isExpanded ? (
+			<span className={`collection-tree-caret${isLoading ? ' is-loading' : ''}`} style={hideChevron ? { visibility: 'hidden' } : undefined}>
+				{isLoading ? (
+					<svg className="caret-loading-spinner" viewBox="0 0 1024 1024" width="10" height="10" fill="currentColor">
+						<path d="M512 1024c-282.77 0-512-229.23-512-512s229.23-512 512-512 512 229.23 512 512-229.23 512-512 512zm0-96c229.75 0 416-186.25 416-416S741.75 96 512 96 96 282.25 96 512s186.25 416 416 416z" opacity=".2"/>
+						<path d="M512 0c282.77 0 512 229.23 512 512h-96c0-229.75-186.25-416-416-416S96 282.25 96 512H0C0 229.23 229.23 0 512 0z"/>
+					</svg>
+				) : item.isExpanded ? (
 					<CaretDown
 						size={10}
 						weight="bold"
@@ -505,6 +512,7 @@ interface TreeViewProps {
 	onSelectFolder?: (path: string) => void;
 	searchQuery?: string;
 	gitStatuses?: Record<string, 'modified' | 'added' | 'untracked'>;
+	loadingDirs?: Set<string>;
 }
 
 export const TreeView: React.FC<
@@ -535,6 +543,7 @@ export const TreeView: React.FC<
 	workspacePath,
 	onSelectFolder,
 	gitStatuses,
+	loadingDirs,
 }) => {
 		const [deleteConfirmId, setDeleteConfirmId] =
 			useState<string | null>(null);
@@ -621,6 +630,7 @@ export const TreeView: React.FC<
 							<FolderRow
 								item={item}
 								gitStatus={getFolderGitStatus(item.path, gitStatuses)}
+								isLoading={loadingDirs?.has(item.path)}
 								onToggle={onToggleFolder}
 								onCreateFile={
 									onCreateFile
@@ -689,6 +699,7 @@ export const TreeView: React.FC<
 							key={item.id}
 							item={item}
 							gitStatus={getFolderGitStatus(item.path, gitStatuses)}
+							isLoading={loadingDirs?.has(item.path)}
 							onToggle={onToggleFolder}
 							onCreateFile={onCreateFile}
 							onPlusClick={onPlusClick}

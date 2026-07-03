@@ -148,6 +148,7 @@ export const WorkspaceTree = forwardRef<
 		collapseAllDirs,
 		navigableItems,
 		isLoaded,
+		loadingDirs,
 	} = useWorkspaceFileTree(
 		workspace.path,
 		sortMode,
@@ -427,6 +428,7 @@ export const WorkspaceTree = forwardRef<
 					onSelectFolder={onSelectFolder}
 					searchQuery={searchQuery}
 					gitStatuses={gitStatuses}
+					loadingDirs={loadingDirs}
 				/>
 			) : null}
 			{(isExpanded || isSearching) &&
