@@ -1186,11 +1186,15 @@ body.titlebar-collapsed #titlebar {
 }
 
 .canvas-tile.tile-focused {
-	border-color: rgba(0, 0, 0, 0.5);
+	border-color: var(--focused-tile-border-color, rgba(0, 0, 0, 0.5));
+	outline: var(--focused-tile-border-width, 1px) solid var(--focused-tile-border-color, rgba(0, 0, 0, 0.5));
+	outline-offset: calc(0px - var(--focused-tile-border-width, 1px));
 }
 
 .dark .canvas-tile.tile-focused {
-	border-color: rgba(255, 255, 255, 0.5);
+	border-color: var(--focused-tile-border-color, rgba(255, 255, 255, 0.5));
+	outline: var(--focused-tile-border-width, 1px) solid var(--focused-tile-border-color, rgba(255, 255, 255, 0.5));
+	outline-offset: calc(0px - var(--focused-tile-border-width, 1px));
 }
 
 

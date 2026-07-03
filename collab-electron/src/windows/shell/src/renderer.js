@@ -166,6 +166,40 @@ window.shellApi.onPrefChanged((key, value) => {
 	}
 });
 
+// -- Custom Tile border/ring preferences --
+let currentTileBorderColor = "";
+let currentTileRingWidth = 1;
+
+function updateTileFocusStyle() {
+	if (currentTileBorderColor) {
+		document.documentElement.style.setProperty("--focused-tile-border-color", currentTileBorderColor);
+	} else {
+		document.documentElement.style.removeProperty("--focused-tile-border-color");
+	}
+	document.documentElement.style.setProperty("--focused-tile-border-width", currentTileRingWidth + "px");
+}
+
+window.shellApi.getPref("focusedTileBorderColor").then((v) => {
+	currentTileBorderColor = typeof v === "string" ? v : "";
+	updateTileFocusStyle();
+});
+
+window.shellApi.getPref("focusedTileRingWidth").then((v) => {
+	currentTileRingWidth = typeof v === "number" ? v : 1;
+	updateTileFocusStyle();
+});
+
+window.shellApi.onPrefChanged((key, value) => {
+	if (key === "focusedTileBorderColor") {
+		currentTileBorderColor = typeof value === "string" ? value : "";
+		updateTileFocusStyle();
+	}
+	if (key === "focusedTileRingWidth") {
+		currentTileRingWidth = typeof value === "number" ? value : 1;
+		updateTileFocusStyle();
+	}
+});
+
 // -- Viewport --
 
 const viewport = createViewport(canvasEl, gridCanvas, tiles);

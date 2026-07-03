@@ -185,6 +185,8 @@ function AppearancePane() {
   const [theme, setTheme] = useState<ThemeMode>("system");
   const [canvasOpacity, setCanvasOpacity] = useState(0);
   const [maxZoom, setMaxZoom] = useState(100);
+  const [tileBorderColor, setTileBorderColor] = useState("");
+  const [tileRingWidth, setTileRingWidth] = useState(1);
 
   useEffect(() => {
     api.getPref("theme")
@@ -203,6 +205,16 @@ function AppearancePane() {
         if (typeof v === "number") setMaxZoom(Math.round(v * 100));
       })
       .catch(() => { });
+    api.getPref("focusedTileBorderColor")
+      .then((v) => {
+        if (typeof v === "string") setTileBorderColor(v);
+      })
+      .catch(() => { });
+    api.getPref("focusedTileRingWidth")
+      .then((v) => {
+        if (typeof v === "number") setTileRingWidth(v);
+      })
+      .catch(() => { });
   }, []);
 
   async function handleThemeChange(mode: ThemeMode) {
@@ -218,6 +230,16 @@ function AppearancePane() {
   async function handleMaxZoomChange(value: number) {
     setMaxZoom(value);
     await api.setPref("maxZoom", value / 100);
+  }
+
+  async function handleBorderColorChange(value: string) {
+    setTileBorderColor(value);
+    await api.setPref("focusedTileBorderColor", value);
+  }
+
+  async function handleRingWidthChange(value: number) {
+    setTileRingWidth(value);
+    await api.setPref("focusedTileRingWidth", value);
   }
 
   return (
@@ -267,6 +289,51 @@ function AppearancePane() {
         <p className="text-xs text-muted-foreground">
           Above 100% terminal text may look blurry.
         </p>
+      </div>
+
+      <div className="space-y-4 pt-4 border-t border-border/50">
+        <h3 className="text-sm font-semibold">Active Tile Border & Ring</h3>
+        
+        <div className="flex items-center justify-between">
+          <div className="space-y-0.5">
+            <p className="text-sm font-medium">Border / Ring Color</p>
+            <p className="text-xs text-muted-foreground">Custom color of the focused tile edge.</p>
+          </div>
+          <div className="flex items-center gap-2">
+            <input
+              type="text"
+              className="w-28 rounded border border-border/30 bg-transparent px-2 py-1 text-xs text-foreground focus:outline-none"
+              placeholder="e.g. #3b82f6"
+              value={tileBorderColor}
+              onChange={(e) => { void handleBorderColorChange(e.target.value); }}
+            />
+            <input
+              type="color"
+              className="h-6 w-6 cursor-pointer rounded border border-border/30 bg-transparent p-0 overflow-hidden"
+              value={tileBorderColor.startsWith("#") && (tileBorderColor.length === 7 || tileBorderColor.length === 4) ? tileBorderColor : "#3b82f6"}
+              onChange={(e) => { void handleBorderColorChange(e.target.value); }}
+            />
+          </div>
+        </div>
+
+        <div className="space-y-2">
+          <div className="flex items-center justify-between">
+            <div className="space-y-0.5">
+              <p className="text-sm font-medium">Ring width</p>
+              <p className="text-xs text-muted-foreground">Thickness of the focus ring in pixels.</p>
+            </div>
+            <span className="text-xs tabular-nums text-muted-foreground">
+              {tileRingWidth}px
+            </span>
+          </div>
+          <Slider
+            value={tileRingWidth}
+            min={1}
+            max={5}
+            step={1}
+            onChange={(v) => { void handleRingWidthChange(v); }}
+          />
+        </div>
       </div>
     </div>
   );
