@@ -41,6 +41,8 @@ export function useWorkspaceFileTree(
 	>(new Set);
 	const dirContentsRef = useRef(dirContents);
 	dirContentsRef.current = dirContents;
+	const currentWorkspacePathRef = useRef(workspacePath);
+	currentWorkspacePathRef.current = workspacePath;
 	const pendingLoadsRef = useRef(
 		new Map<string, Promise<TreeNode[]>>(),
 	);
@@ -48,6 +50,14 @@ export function useWorkspaceFileTree(
 
 	const loadDir = useCallback(
 		async (dirPath: string) => {
+			// Guard: if directory is not part of the currently active workspace, skip loading
+			if (
+				dirPath !== currentWorkspacePathRef.current &&
+				!isSubpath(currentWorkspacePathRef.current, dirPath)
+			) {
+				return [];
+			}
+
 			const pending =
 				pendingLoadsRef.current.get(dirPath);
 			if (pending) {
@@ -59,6 +69,15 @@ export function useWorkspaceFileTree(
 				try {
 					const entries =
 						await window.api.readDir(dirPath);
+
+					// Guard: if workspace changed while fetching, ignore results
+					if (
+						dirPath !== currentWorkspacePathRef.current &&
+						!isSubpath(currentWorkspacePathRef.current, dirPath)
+					) {
+						return [];
+					}
+
 					const children: TreeNode[] = entries
 						.map(
 							(e: {
@@ -134,6 +153,13 @@ export function useWorkspaceFileTree(
 						`Failed to load dir ${dirPath}:`,
 						err,
 					);
+					// Guard: if workspace changed, ignore error handling
+					if (
+						dirPath !== currentWorkspacePathRef.current &&
+						!isSubpath(currentWorkspacePathRef.current, dirPath)
+					) {
+						return [];
+					}
 					setDirContents((prev) => {
 						if (prev.has(dirPath))
 							return prev;
@@ -151,9 +177,15 @@ export function useWorkspaceFileTree(
 							dirPath,
 						)
 					) {
-						queueMicrotask(() =>
-							loadDir(dirPath),
-						);
+						// Guard: only schedule dirty reload if we are still on the same workspace
+						if (
+							dirPath === currentWorkspacePathRef.current ||
+							isSubpath(currentWorkspacePathRef.current, dirPath)
+						) {
+							queueMicrotask(() =>
+								loadDir(dirPath),
+							);
+						}
 					}
 				}
 			})();
@@ -167,8 +199,12 @@ export function useWorkspaceFileTree(
 		[],
 	);
 
-	// Load persisted expanded dirs and root on mount
+	// Load persisted expanded dirs and root on mount/change
 	useEffect(() => {
+		// Reset states to prevent old folders leaking into the new workspace
+		setDirContents(new Map());
+		setExpandedDirs(new Set());
+
 		window.api
 			.getWorkspacePref(
 				'expanded_dirs',
@@ -185,14 +221,14 @@ export function useWorkspaceFileTree(
 		loadDir(workspacePath);
 	}, [workspacePath, loadDir]);
 
-	// Load expanded dirs when they change
+	// Load expanded dirs when they change (using ref to avoid infinite re-render loops)
 	useEffect(() => {
 		for (const dirPath of expandedDirs) {
-			if (!dirContents.has(dirPath)) {
+			if (!dirContentsRef.current.has(dirPath)) {
 				loadDir(dirPath);
 			}
 		}
-	}, [expandedDirs, dirContents, loadDir]);
+	}, [expandedDirs, loadDir]);
 
 	// File watcher — scoped to this workspace
 	useEffect(() => {
