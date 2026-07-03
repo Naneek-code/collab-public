@@ -26,6 +26,7 @@
 
 	--island-gap: 6px;
 	--island-radius: 8px;
+	--tile-radius: var(--custom-tile-radius, var(--island-radius));
 	--island-shadow: 0 1px 2px rgba(0, 0, 0, 0.06), 0 4px 12px rgba(0, 0, 0, 0.05);
 }
 
@@ -55,7 +56,7 @@ html,
 body {
 	height: 100%;
 	overflow: hidden;
-	background: var(--bg);
+	background: var(--custom-window-bg, var(--bg));
 	color: var(--fg);
 	font-family: var(--font-sans);
 	-webkit-font-smoothing: antialiased;
@@ -71,7 +72,7 @@ html.platform-win,
 body.platform-win,
 html.platform-darwin,
 body.platform-darwin {
-	background: transparent;
+	background: var(--custom-window-bg, transparent);
 }
 
 /* ── Titlebar ── */
@@ -508,7 +509,7 @@ body.titlebar-collapsed #panels {
 	border: 1px solid var(--border);
 	border-radius: var(--island-radius);
 	box-shadow: var(--island-shadow);
-	background: rgba(var(--canvas-bg-rgb), var(--canvas-opacity));
+	background: rgba(var(--canvas-bg-rgb), calc(1 - (1 - var(--canvas-opacity)) / 2));
 	outline: none;
 }
 
@@ -522,7 +523,7 @@ body.titlebar-collapsed #panels {
 }
 
 .platform-win #panel-viewer {
-	background: rgba(var(--canvas-bg-rgb), var(--canvas-opacity));
+	background: rgba(var(--canvas-bg-rgb), calc(1 - (1 - var(--canvas-opacity)) / 2));
 }
 
 #panel-agent,
@@ -1176,7 +1177,7 @@ body.titlebar-collapsed #titlebar {
 
 .canvas-tile {
 	position: absolute;
-	border-radius: var(--island-radius);
+	border-radius: var(--tile-radius);
 	box-shadow: none;
 	display: flex;
 	flex-direction: column;
@@ -1185,16 +1186,18 @@ body.titlebar-collapsed #titlebar {
 	user-select: none;
 }
 
-.canvas-tile.tile-focused {
-	border-color: var(--focused-tile-border-color, rgba(0, 0, 0, 0.5));
-	outline: var(--focused-tile-border-width, 1px) solid var(--focused-tile-border-color, rgba(0, 0, 0, 0.5));
-	outline-offset: calc(0px - var(--focused-tile-border-width, 1px));
+.canvas-tile.tile-focused,
+.canvas-tile.tile-selected.tile-focused {
+	border-color: var(--focused-tile-border-color, rgba(0, 0, 0, 0.5)) !important;
+	outline: var(--focused-tile-border-width, 1px) solid var(--focused-tile-border-color, rgba(0, 0, 0, 0.5)) !important;
+	outline-offset: calc(0px - var(--focused-tile-border-width, 1px)) !important;
 }
 
-.dark .canvas-tile.tile-focused {
-	border-color: var(--focused-tile-border-color, rgba(255, 255, 255, 0.5));
-	outline: var(--focused-tile-border-width, 1px) solid var(--focused-tile-border-color, rgba(255, 255, 255, 0.5));
-	outline-offset: calc(0px - var(--focused-tile-border-width, 1px));
+.dark .canvas-tile.tile-focused,
+.dark .canvas-tile.tile-selected.tile-focused {
+	border-color: var(--focused-tile-border-color, rgba(255, 255, 255, 0.5)) !important;
+	outline: var(--focused-tile-border-width, 1px) solid var(--focused-tile-border-color, rgba(255, 255, 255, 0.5)) !important;
+	outline-offset: calc(0px - var(--focused-tile-border-width, 1px)) !important;
 }
 
 
@@ -1207,7 +1210,7 @@ body.titlebar-collapsed #titlebar {
 	padding: 8px 8px;
 	background: var(--bg);
 	border-bottom: none;
-	border-radius: var(--island-radius) var(--island-radius) 0 0;
+	border-radius: var(--tile-radius) var(--tile-radius) 0 0;
 	cursor: grab;
 	user-select: none;
 	flex-shrink: 0;
@@ -1286,7 +1289,7 @@ body.titlebar-collapsed #titlebar {
 	flex: 1;
 	overflow: hidden;
 	position: relative;
-	border-radius: 0 0 var(--island-radius) var(--island-radius);
+	border-radius: 0 0 var(--tile-radius) var(--tile-radius);
 }
 
 .tile-content webview {
@@ -1319,7 +1322,7 @@ body.titlebar-collapsed #titlebar {
 	color: rgba(0, 0, 0, 0.85);
 	height: auto;
 	padding: 6px 8px;
-	border-radius: var(--island-radius) var(--island-radius) 0 0;
+	border-radius: var(--tile-radius) var(--tile-radius) 0 0;
 }
 
 .dark .canvas-tile[data-tile-type="note"] .tile-title-bar,
@@ -1552,13 +1555,13 @@ body.titlebar-collapsed #titlebar {
 /* ── Selection, dragging, marquee ── */
 
 .canvas-tile.tile-selected {
-	border-color: #4a9eff;
+	border-color: var(--focused-tile-border-color, #4a9eff);
 }
 
 .selection-marquee {
 	position: absolute;
-	border: 1.5px solid #4a9eff;
-	background: rgba(74, 158, 255, 0.08);
+	border: 1.5px solid var(--focused-tile-border-color, #4a9eff);
+	background: color-mix(in srgb, var(--focused-tile-border-color, #4a9eff) 8%, transparent);
 	pointer-events: none;
 	z-index: 999999;
 }

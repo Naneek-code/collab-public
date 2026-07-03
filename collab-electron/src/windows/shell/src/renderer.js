@@ -139,9 +139,27 @@ if (fsButton) {
 
 // -- Alpha banner dismiss --
 
+window.shellApi.getPref("dismissedAlphaBanner").then((v) => {
+	if (v === true) {
+		document.getElementById("alpha-label").hidden = true;
+	}
+});
+
 document.getElementById("alpha-dismiss").addEventListener("click", (e) => {
 	e.preventDefault();
 	document.getElementById("alpha-label").hidden = true;
+});
+
+document.getElementById("alpha-dont-show").addEventListener("click", (e) => {
+	e.preventDefault();
+	document.getElementById("alpha-label").hidden = true;
+	window.shellApi.setPref("dismissedAlphaBanner", true);
+});
+
+window.shellApi.onPrefChanged((key, value) => {
+	if (key === "dismissedAlphaBanner") {
+		document.getElementById("alpha-label").hidden = value === true;
+	}
 });
 
 // -- Dark mode --
@@ -197,6 +215,62 @@ window.shellApi.onPrefChanged((key, value) => {
 	if (key === "focusedTileRingWidth") {
 		currentTileRingWidth = typeof value === "number" ? value : 1;
 		updateTileFocusStyle();
+	}
+});
+
+// -- Custom Window background preference --
+let currentWindowBgType = "transparent";
+let currentWindowBgColor = "";
+
+function updateWindowBg() {
+	if (currentWindowBgType === "custom" && currentWindowBgColor) {
+		document.documentElement.style.setProperty("--custom-window-bg", currentWindowBgColor);
+	} else {
+		document.documentElement.style.removeProperty("--custom-window-bg");
+	}
+}
+
+window.shellApi.getPref("windowBackgroundType").then((v) => {
+	currentWindowBgType = typeof v === "string" ? v : "transparent";
+	updateWindowBg();
+});
+
+window.shellApi.getPref("windowBackgroundColor").then((v) => {
+	currentWindowBgColor = typeof v === "string" ? v : "";
+	updateWindowBg();
+});
+
+window.shellApi.onPrefChanged((key, value) => {
+	if (key === "windowBackgroundType") {
+		currentWindowBgType = typeof value === "string" ? value : "transparent";
+		updateWindowBg();
+	}
+	if (key === "windowBackgroundColor") {
+		currentWindowBgColor = typeof value === "string" ? value : "";
+		updateWindowBg();
+	}
+});
+
+// -- Custom Tiles Rounded preference --
+let currentTilesRounded = true;
+
+function updateTilesRounded() {
+	if (currentTilesRounded) {
+		document.documentElement.style.removeProperty("--custom-tile-radius");
+	} else {
+		document.documentElement.style.setProperty("--custom-tile-radius", "0px");
+	}
+}
+
+window.shellApi.getPref("tilesRounded").then((v) => {
+	currentTilesRounded = v !== false;
+	updateTilesRounded();
+});
+
+window.shellApi.onPrefChanged((key, value) => {
+	if (key === "tilesRounded") {
+		currentTilesRounded = value !== false;
+		updateTilesRounded();
 	}
 });
 

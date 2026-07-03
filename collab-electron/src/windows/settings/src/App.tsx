@@ -187,6 +187,10 @@ function AppearancePane() {
   const [maxZoom, setMaxZoom] = useState(100);
   const [tileBorderColor, setTileBorderColor] = useState("");
   const [tileRingWidth, setTileRingWidth] = useState(1);
+  const [windowBgType, setWindowBgType] = useState<"transparent" | "custom">("transparent");
+  const [windowBgColor, setWindowBgColor] = useState("");
+  const [tilesRounded, setTilesRounded] = useState(true);
+  const [showAlphaBanner, setShowAlphaBanner] = useState(true);
 
   useEffect(() => {
     api.getPref("theme")
@@ -215,6 +219,26 @@ function AppearancePane() {
         if (typeof v === "number") setTileRingWidth(v);
       })
       .catch(() => { });
+    api.getPref("windowBackgroundType")
+      .then((v) => {
+        if (v === "transparent" || v === "custom") setWindowBgType(v);
+      })
+      .catch(() => { });
+    api.getPref("windowBackgroundColor")
+      .then((v) => {
+        if (typeof v === "string") setWindowBgColor(v);
+      })
+      .catch(() => { });
+    api.getPref("tilesRounded")
+      .then((v) => {
+        setTilesRounded(v !== false);
+      })
+      .catch(() => { });
+    api.getPref("dismissedAlphaBanner")
+      .then((v) => {
+        setShowAlphaBanner(v !== true);
+      })
+      .catch(() => { });
   }, []);
 
   async function handleThemeChange(mode: ThemeMode) {
@@ -240,6 +264,26 @@ function AppearancePane() {
   async function handleRingWidthChange(value: number) {
     setTileRingWidth(value);
     await api.setPref("focusedTileRingWidth", value);
+  }
+
+  async function handleTilesRoundedChange(value: boolean) {
+    setTilesRounded(value);
+    await api.setPref("tilesRounded", value);
+  }
+
+  async function handleShowAlphaBannerChange(value: boolean) {
+    setShowAlphaBanner(value);
+    await api.setPref("dismissedAlphaBanner", !value);
+  }
+
+  async function handleWindowBgTypeChange(value: "transparent" | "custom") {
+    setWindowBgType(value);
+    await api.setPref("windowBackgroundType", value);
+  }
+
+  async function handleWindowBgColorChange(value: string) {
+    setWindowBgColor(value);
+    await api.setPref("windowBackgroundColor", value);
   }
 
   return (
@@ -303,14 +347,14 @@ function AppearancePane() {
             <input
               type="text"
               className="w-28 rounded border border-border/30 bg-transparent px-2 py-1 text-xs text-foreground focus:outline-none"
-              placeholder="e.g. #3b82f6"
+              placeholder="e.g. #3E81F5"
               value={tileBorderColor}
               onChange={(e) => { void handleBorderColorChange(e.target.value); }}
             />
             <input
               type="color"
               className="h-6 w-6 cursor-pointer rounded border border-border/30 bg-transparent p-0 overflow-hidden"
-              value={tileBorderColor.startsWith("#") && (tileBorderColor.length === 7 || tileBorderColor.length === 4) ? tileBorderColor : "#3b82f6"}
+              value={tileBorderColor.startsWith("#") && (tileBorderColor.length === 7 || tileBorderColor.length === 4) ? tileBorderColor : "#808080"}
               onChange={(e) => { void handleBorderColorChange(e.target.value); }}
             />
           </div>
@@ -332,6 +376,79 @@ function AppearancePane() {
             max={5}
             step={1}
             onChange={(v) => { void handleRingWidthChange(v); }}
+          />
+        </div>
+
+        <div className="flex items-center justify-between pt-2">
+          <div className="space-y-0.5">
+            <p className="text-sm font-medium">Rounded Corners</p>
+            <p className="text-xs text-muted-foreground">Toggle rounded borders on workspace tiles.</p>
+          </div>
+          <input
+            type="checkbox"
+            className="h-4 w-4 cursor-pointer accent-foreground rounded border border-border/30 bg-transparent focus:outline-none"
+            checked={tilesRounded}
+            onChange={(e) => { void handleTilesRoundedChange(e.target.checked); }}
+          />
+        </div>
+      </div>
+
+      <div className="space-y-4 pt-4 border-t border-border/50">
+        <h3 className="text-sm font-semibold">Window Background</h3>
+        
+        <div className="flex items-center justify-between">
+          <div className="space-y-0.5">
+            <p className="text-sm font-medium">Background Style</p>
+            <p className="text-xs text-muted-foreground">Choose transparency (Win/Mac only) or a custom color.</p>
+          </div>
+          <select
+            className="rounded border border-border/30 bg-background px-2.5 py-1 text-xs text-foreground focus:outline-none cursor-pointer"
+            value={windowBgType}
+            onChange={(e) => { void handleWindowBgTypeChange(e.target.value as "transparent" | "custom"); }}
+          >
+            <option value="transparent">Transparency (Win/Mac)</option>
+            <option value="custom">Custom Color</option>
+          </select>
+        </div>
+
+        {windowBgType === "custom" && (
+          <div className="flex items-center justify-between">
+            <div className="space-y-0.5">
+              <p className="text-sm font-medium">Window Color</p>
+              <p className="text-xs text-muted-foreground">The solid background color of the entire application window.</p>
+            </div>
+            <div className="flex items-center gap-2">
+              <input
+                type="text"
+                className="w-28 rounded border border-border/30 bg-transparent px-2 py-1 text-xs text-foreground focus:outline-none"
+                placeholder="e.g. #1e1e1e"
+                value={windowBgColor}
+                onChange={(e) => { void handleWindowBgColorChange(e.target.value); }}
+              />
+              <input
+                type="color"
+                className="h-6 w-6 cursor-pointer rounded border border-border/30 bg-transparent p-0 overflow-hidden"
+                value={windowBgColor.startsWith("#") && (windowBgColor.length === 7 || windowBgColor.length === 4) ? windowBgColor : "#181818"}
+                onChange={(e) => { void handleWindowBgColorChange(e.target.value); }}
+              />
+            </div>
+          </div>
+        )}
+      </div>
+
+      <div className="space-y-4 pt-4 border-t border-border/50">
+        <h3 className="text-sm font-semibold">Alpha Warning Banner</h3>
+        
+        <div className="flex items-center justify-between">
+          <div className="space-y-0.5">
+            <p className="text-sm font-medium">Show Alpha Warning Banner</p>
+            <p className="text-xs text-muted-foreground">Toggle the BEWARE BUGS banner at the bottom of the window.</p>
+          </div>
+          <input
+            type="checkbox"
+            className="h-4 w-4 cursor-pointer accent-foreground rounded border border-border/30 bg-transparent focus:outline-none"
+            checked={showAlphaBanner}
+            onChange={(e) => { void handleShowAlphaBannerChange(e.target.checked); }}
           />
         </div>
       </div>
@@ -914,7 +1031,7 @@ export default function App() {
       </div>
 
       {/* Content */}
-      <div className="flex-1 overflow-auto">
+      <div className="flex-1 overflow-auto scrollbar-hover">
         {activePane === "appearance" && <AppearancePane />}
         {activePane === "terminal" && <TerminalPane />}
         {activePane === "integrations" && <IntegrationsPane />}
