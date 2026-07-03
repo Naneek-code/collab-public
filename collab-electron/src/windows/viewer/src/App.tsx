@@ -203,7 +203,7 @@ export default function App() {
 						relPath = relPath.slice(1);
 					}
 				}
-				window.api.editorGitShow(wsPath, relPath).then((original) => {
+				window.api.editorGitShow(wsPath, path).then((original) => {
 					setGitOriginalContent(original);
 					setDiffMode(true);
 				}).catch((err) => {

@@ -185,11 +185,40 @@ export function registerEditorHandlers(): void {
 
   ipcMain.handle(
     "editor:git-show",
-    async (_event, folder: string, path: string): Promise<string> => {
+    async (_event, folder: string, filePath: string): Promise<string> => {
       try {
-        const out = await git(folder, ["show", `HEAD:${path}`]);
+        // Resolve absolute directory of the file
+        const fileDir = join(filePath, "..");
+        // Query the actual git top-level repository root
+        const gitRootOut = await execFileAsync("git", ["rev-parse", "--show-toplevel"], {
+          cwd: fileDir,
+          timeout: 5000,
+          windowsHide: true,
+        });
+        const gitRoot = gitRootOut.stdout.trim();
+
+        // Calculate path relative to the resolved git root
+        const absolutePath = join(filePath);
+        const normalizedGitRoot = join(gitRoot);
+        let relPath = absolutePath;
+        if (absolutePath.startsWith(normalizedGitRoot)) {
+          relPath = absolutePath.slice(normalizedGitRoot.length);
+          if (relPath.startsWith("/") || relPath.startsWith("\\")) {
+            relPath = relPath.slice(1);
+          }
+        }
+        const gitRelPath = relPath.replace(/\\/g, "/");
+
+        console.log(`[git-show] Resolved Git Root: ${gitRoot}, Relative Path: ${gitRelPath}`);
+
+        const out = await execFileAsync("git", ["show", `HEAD:${gitRelPath}`], {
+          cwd: gitRoot,
+          timeout: 5000,
+          windowsHide: true,
+        });
         return out.stdout;
-      } catch {
+      } catch (err) {
+        console.error(`[git-show] Failed for absolute path ${filePath}:`, err);
         return "";
       }
     },
