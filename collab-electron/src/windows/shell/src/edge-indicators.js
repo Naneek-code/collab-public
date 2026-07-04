@@ -68,10 +68,48 @@ export function createEdgeIndicators({
 	/** @type {Map<string, number>} */
 	const edgeDotFadeOuts = new Map();
 
+	let alwaysCenterActiveTile = true;
+	window.shellApi.getPref("alwaysCenterActiveTile").then((v) => {
+		alwaysCenterActiveTile = v !== false;
+	}).catch(() => {});
+
+	window.shellApi.onPrefChanged((key, value) => {
+		if (key === "alwaysCenterActiveTile") {
+			alwaysCenterActiveTile = value !== false;
+		}
+	});
+
 	function panToTile(tile, { targetZoom } = {}) {
 		if (panAnimRaf) {
 			cancelAnimationFrame(panAnimRaf);
 			panAnimRaf = null;
+		}
+
+		// Highlight visual flash
+		const tileDOMs = getTileDOMs();
+		const dom = tileDOMs.get(tile.id);
+		if (dom) {
+			dom.container.classList.add("edge-indicator-highlight");
+			setTimeout(() => {
+				dom.container.classList.remove(
+					"edge-indicator-highlight",
+				);
+			}, 1200);
+		}
+
+		// If alwaysCenterActiveTile is disabled, only pan if the tile is out of view
+		if (!alwaysCenterActiveTile) {
+			const vw = canvasEl.clientWidth;
+			const vh = canvasEl.clientHeight;
+			const left = tile.x * viewportState.zoom + viewportState.panX;
+			const right = (tile.x + tile.width) * viewportState.zoom + viewportState.panX;
+			const top = tile.y * viewportState.zoom + viewportState.panY;
+			const bottom = (tile.y + tile.height) * viewportState.zoom + viewportState.panY;
+
+			// Check if fully visible in current viewport
+			if (left >= 0 && right <= vw && top >= 0 && bottom <= vh) {
+				return; // Skip animation/panning
+			}
 		}
 
 		const vw = canvasEl.clientWidth;
@@ -91,16 +129,6 @@ export function createEdgeIndicators({
 			return 1 - Math.pow(1 - t, 3);
 		}
 
-		const tileDOMs = getTileDOMs();
-		const dom = tileDOMs.get(tile.id);
-		if (dom) {
-			dom.container.classList.add("edge-indicator-highlight");
-			setTimeout(() => {
-				dom.container.classList.remove(
-					"edge-indicator-highlight",
-				);
-			}, 1200);
-		}
 
 		function step(now) {
 			const elapsed = now - startTime;

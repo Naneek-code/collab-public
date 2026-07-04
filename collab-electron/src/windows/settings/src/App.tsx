@@ -191,6 +191,7 @@ function AppearancePane() {
   const [windowBgColor, setWindowBgColor] = useState("");
   const [tilesRounded, setTilesRounded] = useState(true);
   const [showAlphaBanner, setShowAlphaBanner] = useState(true);
+  const [alwaysCenterActiveTile, setAlwaysCenterActiveTile] = useState(true);
 
   useEffect(() => {
     api.getPref("theme")
@@ -239,6 +240,11 @@ function AppearancePane() {
         setShowAlphaBanner(v !== true);
       })
       .catch(() => { });
+    api.getPref("alwaysCenterActiveTile")
+      .then((v) => {
+        setAlwaysCenterActiveTile(v !== false);
+      })
+      .catch(() => { });
   }, []);
 
   async function handleThemeChange(mode: ThemeMode) {
@@ -274,6 +280,11 @@ function AppearancePane() {
   async function handleShowAlphaBannerChange(value: boolean) {
     setShowAlphaBanner(value);
     await api.setPref("dismissedAlphaBanner", !value);
+  }
+
+  async function handleAlwaysCenterActiveTileChange(value: boolean) {
+    setAlwaysCenterActiveTile(value);
+    await api.setPref("alwaysCenterActiveTile", value);
   }
 
   async function handleWindowBgTypeChange(value: "transparent" | "custom") {
@@ -389,6 +400,19 @@ function AppearancePane() {
             className="h-4 w-4 cursor-pointer accent-foreground rounded border border-border/30 bg-transparent focus:outline-none"
             checked={tilesRounded}
             onChange={(e) => { void handleTilesRoundedChange(e.target.checked); }}
+          />
+        </div>
+
+        <div className="flex items-center justify-between pt-2">
+          <div className="space-y-0.5">
+            <p className="text-sm font-medium">Always Center Active Tile</p>
+            <p className="text-xs text-muted-foreground">Always center the active tile when navigating with shortcuts.</p>
+          </div>
+          <input
+            type="checkbox"
+            className="h-4 w-4 cursor-pointer accent-foreground rounded border border-border/30 bg-transparent focus:outline-none"
+            checked={alwaysCenterActiveTile}
+            onChange={(e) => { void handleAlwaysCenterActiveTileChange(e.target.checked); }}
           />
         </div>
       </div>
