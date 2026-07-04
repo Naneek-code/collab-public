@@ -156,7 +156,7 @@ export function createTileManager({
 		if (!tile) return;
 		tile.pinned = !tile.pinned;
 		if (tile.pinned) {
-			const canvasEl = document.getElementById("canvas");
+			const canvasEl = document.getElementById("panel-viewer");
 			const tZoom = viewportState.zoom;
 			let sx = tile.x * tZoom + viewportState.panX;
 			let sy = tile.y * tZoom + viewportState.panY;

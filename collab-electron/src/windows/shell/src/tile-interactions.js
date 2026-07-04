@@ -86,7 +86,7 @@ export function attachDrag(titleBar, tile, {
           entry.tile.x = entry.startX + dx;
           entry.tile.y = entry.startY + dy;
           if (entry.tile.pinned) {
-            const canvasEl = document.getElementById("canvas");
+            const canvasEl = document.getElementById("panel-viewer");
             if (canvasEl) {
               const vw = canvasEl.clientWidth;
               const vh = canvasEl.clientHeight;
@@ -110,7 +110,7 @@ export function attachDrag(titleBar, tile, {
         if (snap.x !== null) tile.x = snap.x;
         if (snap.y !== null) tile.y = snap.y;
         if (tile.pinned) {
-          const canvasEl = document.getElementById("canvas");
+          const canvasEl = document.getElementById("panel-viewer");
           if (canvasEl) {
             const vw = canvasEl.clientWidth;
             const vh = canvasEl.clientHeight;
