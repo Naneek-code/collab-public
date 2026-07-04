@@ -1285,6 +1285,11 @@ body.titlebar-collapsed #titlebar {
 	opacity: 1;
 }
 
+.tile-pin-btn.pinned {
+	opacity: 1 !important;
+	color: var(--focused-tile-border-color, #4a9eff);
+}
+
 .tile-content {
 	flex: 1;
 	overflow: hidden;

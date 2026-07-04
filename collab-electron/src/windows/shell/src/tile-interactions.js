@@ -85,6 +85,23 @@ export function attachDrag(titleBar, tile, {
         for (const entry of groupCtx) {
           entry.tile.x = entry.startX + dx;
           entry.tile.y = entry.startY + dy;
+          if (entry.tile.pinned) {
+            const canvasEl = document.getElementById("canvas");
+            if (canvasEl) {
+              const vw = canvasEl.clientWidth;
+              const vh = canvasEl.clientHeight;
+              const tZoom = viewport.zoom;
+              const sWidth = entry.tile.width * tZoom;
+              const sHeight = entry.tile.height * tZoom;
+              entry.tile.pinnedX = Math.max(0, Math.min(vw - sWidth, entry.tile.x * tZoom + viewport.panX));
+              entry.tile.pinnedY = Math.max(0, Math.min(vh - sHeight, entry.tile.y * tZoom + viewport.panY));
+              entry.tile.x = (entry.tile.pinnedX - viewport.panX) / tZoom;
+              entry.tile.y = (entry.tile.pinnedY - viewport.panY) / tZoom;
+            } else {
+              entry.tile.pinnedX = entry.tile.x * viewport.zoom + viewport.panX;
+              entry.tile.pinnedY = entry.tile.y * viewport.zoom + viewport.panY;
+            }
+          }
         }
       } else {
         tile.x = startTX + dx;
@@ -92,6 +109,23 @@ export function attachDrag(titleBar, tile, {
         const snap = computeDragSnap(tile, SNAP_PX / viewport.zoom);
         if (snap.x !== null) tile.x = snap.x;
         if (snap.y !== null) tile.y = snap.y;
+        if (tile.pinned) {
+          const canvasEl = document.getElementById("canvas");
+          if (canvasEl) {
+            const vw = canvasEl.clientWidth;
+            const vh = canvasEl.clientHeight;
+            const tZoom = viewport.zoom;
+            const sWidth = tile.width * tZoom;
+            const sHeight = tile.height * tZoom;
+            tile.pinnedX = Math.max(0, Math.min(vw - sWidth, tile.x * tZoom + viewport.panX));
+            tile.pinnedY = Math.max(0, Math.min(vh - sHeight, tile.y * tZoom + viewport.panY));
+            tile.x = (tile.pinnedX - viewport.panX) / tZoom;
+            tile.y = (tile.pinnedY - viewport.panY) / tZoom;
+          } else {
+            tile.pinnedX = tile.x * viewport.zoom + viewport.panX;
+            tile.pinnedY = tile.y * viewport.zoom + viewport.panY;
+          }
+        }
       }
       onUpdate();
     }
@@ -466,6 +500,10 @@ export function attachResize(
         }
 
         pushChains();
+        if (tile.pinned) {
+          tile.pinnedX = tile.x * viewport.zoom + viewport.panX;
+          tile.pinnedY = tile.y * viewport.zoom + viewport.panY;
+        }
         onUpdate();
       }
 
@@ -476,6 +514,10 @@ export function attachResize(
           wv.webview.style.pointerEvents = "";
         }
         snapToGrid(tile);
+        if (tile.pinned) {
+          tile.pinnedX = tile.x * viewport.zoom + viewport.panX;
+          tile.pinnedY = tile.y * viewport.zoom + viewport.panY;
+        }
         for (const side of ["e", "w", "s", "n"]) {
           for (const o of chains[side]) snapToGrid(o);
         }

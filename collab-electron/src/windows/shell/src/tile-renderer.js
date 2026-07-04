@@ -244,6 +244,23 @@ export function createTileDOM(tile, callbacks) {
     btnGroup.appendChild(restartBtn);
   }
 
+  const pinBtn = document.createElement("button");
+  pinBtn.className = "tile-action-btn tile-pin-btn" + (tile.pinned ? " pinned" : "");
+  const pinIconUnpinned = `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="transform: rotate(45deg);"><line x1="12" y1="17" x2="12" y2="22"></line><path d="M5 17h14v-1.76a2 2 0 0 0-.44-1.24l-2.78-3.5A2 2 0 0 1 15 9.24V5a1 1 0 0 0-1-1h-4a1 1 0 0 0-1 1v4.24c0 .43-.14.85-.4 1.18l-2.78 3.5a2 2 0 0 0-.44 1.24z"></path></svg>`;
+  const pinIconPinned = `<svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="transform: rotate(45deg);"><line x1="12" y1="17" x2="12" y2="22"></line><path d="M5 17h14v-1.76a2 2 0 0 0-.44-1.24l-2.78-3.5A2 2 0 0 1 15 9.24V5a1 1 0 0 0-1-1h-4a1 1 0 0 0-1 1v4.24c0 .43-.14.85-.4 1.18l-2.78 3.5a2 2 0 0 0-.44 1.24z"></path></svg>`;
+  pinBtn.innerHTML = tile.pinned ? pinIconPinned : pinIconUnpinned;
+  pinBtn.title = tile.pinned ? "Unpin tile" : "Pin tile";
+  pinBtn.addEventListener("mousedown", (e) => {
+    e.stopPropagation();
+  });
+  pinBtn.addEventListener("click", (e) => {
+    e.stopPropagation();
+    if (callbacks.onTogglePin) {
+      callbacks.onTogglePin(tile.id);
+    }
+  });
+  btnGroup.appendChild(pinBtn);
+
   const closeBtn = document.createElement("button");
   closeBtn.className = "tile-action-btn tile-close-btn";
   closeBtn.innerHTML = "&times;";
@@ -297,7 +314,7 @@ export function createTileDOM(tile, callbacks) {
   container.appendChild(contentArea);
   contentArea.appendChild(contentOverlay);
 
-  const dom = { container, titleBar, titleText, contentArea, contentOverlay, closeBtn, urlInput, navBack, navForward, navReload };
+  const dom = { container, titleBar, titleText, contentArea, contentOverlay, pinBtn, closeBtn, urlInput, navBack, navForward, navReload };
   applyTileColor(dom, tile);
   return dom;
 }

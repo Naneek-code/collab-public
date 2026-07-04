@@ -74,6 +74,9 @@ export function createTileManager({
 				autoTitle: t.autoTitle,
 				target: t.target,
 				color: t.color,
+				pinned: t.pinned,
+				pinnedX: t.pinnedX,
+				pinnedY: t.pinnedY,
 			})),
 			frames: getFrames(),
 			viewport: {
@@ -120,6 +123,15 @@ export function createTileManager({
 		for (const tile of tiles) {
 			const dom = tileDOMs.get(tile.id);
 			if (!dom) continue;
+			if (tile.pinned) {
+				if (tile.pinnedX == null || tile.pinnedY == null) {
+					tile.pinnedX = tile.x * viewportState.zoom + viewportState.panX;
+					tile.pinnedY = tile.y * viewportState.zoom + viewportState.panY;
+				} else {
+					tile.x = (tile.pinnedX - viewportState.panX) / viewportState.zoom;
+					tile.y = (tile.pinnedY - viewportState.panY) / viewportState.zoom;
+				}
+			}
 			positionTile(
 				dom.container, tile,
 				viewportState.panX, viewportState.panY,
@@ -137,6 +149,46 @@ export function createTileManager({
 				"tile-selected", isSelected(id),
 			);
 		}
+	}
+
+	function toggleTilePin(id) {
+		const tile = getTile(id);
+		if (!tile) return;
+		tile.pinned = !tile.pinned;
+		if (tile.pinned) {
+			const canvasEl = document.getElementById("canvas");
+			const tZoom = viewportState.zoom;
+			let sx = tile.x * tZoom + viewportState.panX;
+			let sy = tile.y * tZoom + viewportState.panY;
+			if (canvasEl) {
+				const vw = canvasEl.clientWidth;
+				const vh = canvasEl.clientHeight;
+				const sWidth = tile.width * tZoom;
+				const sHeight = tile.height * tZoom;
+				sx = Math.max(0, Math.min(vw - sWidth, sx));
+				sy = Math.max(0, Math.min(vh - sHeight, sy));
+				// Update canvas coordinates in case it shifted to fit visible bounds
+				tile.x = (sx - viewportState.panX) / tZoom;
+				tile.y = (sy - viewportState.panY) / tZoom;
+			}
+			tile.pinnedX = sx;
+			tile.pinnedY = sy;
+		} else {
+			delete tile.pinnedX;
+			delete tile.pinnedY;
+		}
+
+		// Update UI visual representation of pinBtn
+		const dom = tileDOMs.get(id);
+		if (dom?.pinBtn) {
+			const pinIconUnpinned = `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="transform: rotate(45deg);"><line x1="12" y1="17" x2="12" y2="22"></line><path d="M5 17h14v-1.76a2 2 0 0 0-.44-1.24l-2.78-3.5A2 2 0 0 1 15 9.24V5a1 1 0 0 0-1-1h-4a1 1 0 0 0-1 1v4.24c0 .43-.14.85-.4 1.18l-2.78 3.5a2 2 0 0 0-.44 1.24z"></path></svg>`;
+			const pinIconPinned = `<svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="transform: rotate(45deg);"><line x1="12" y1="17" x2="12" y2="22"></line><path d="M5 17h14v-1.76a2 2 0 0 0-.44-1.24l-2.78-3.5A2 2 0 0 1 15 9.24V5a1 1 0 0 0-1-1h-4a1 1 0 0 0-1 1v4.24c0 .43-.14.85-.4 1.18l-2.78 3.5a2 2 0 0 0-.44 1.24z"></path></svg>`;
+			dom.pinBtn.className = "tile-action-btn tile-pin-btn" + (tile.pinned ? " pinned" : "");
+			dom.pinBtn.innerHTML = tile.pinned ? pinIconPinned : pinIconUnpinned;
+			dom.pinBtn.title = tile.pinned ? "Unpin tile" : "Pin tile";
+		}
+		
+		saveCanvasImmediate();
 	}
 
 	// -- Focus management --
@@ -595,6 +647,7 @@ export function createTileManager({
 				applyTileColor(d, t);
 				saveCanvasImmediate();
 			},
+			onTogglePin: (id) => toggleTilePin(id),
 		});
 
 		// Double-click title bar → center tile in viewport
