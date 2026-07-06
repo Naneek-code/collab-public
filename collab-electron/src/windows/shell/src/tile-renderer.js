@@ -304,15 +304,9 @@ export function createTileDOM(tile, callbacks) {
       } else if (selected === "reset-color" && callbacks.onResetColor) {
         callbacks.onResetColor(tile.id);
       } else if (selected === "set-autorun" && callbacks.onSetAutoRun) {
-        const cmd = window.prompt(
-          "Enter command to auto-run when this terminal resets:",
-          tile.autoRunCommand || "",
-        );
-        if (cmd !== null) {
-          callbacks.onSetAutoRun(tile.id, cmd);
-        }
-      } else if (selected === "clear-autorun" && callbacks.onSetAutoRun) {
-        callbacks.onSetAutoRun(tile.id, "");
+        callbacks.onSetAutoRun(tile.id);
+      } else if (selected === "clear-autorun" && callbacks.onClearAutoRun) {
+        callbacks.onClearAutoRun(tile.id);
       }
     });
   }
@@ -398,6 +392,54 @@ export function startInlineRename(dom, tile, onCommit) {
   input.type = "text";
   input.className = "tile-rename-input";
   input.value = tile.userTitle ?? currentName;
+  titleText.style.display = "none";
+  titleText.parentNode.insertBefore(input, titleText);
+  input.select();
+  input.focus();
+
+  let committed = false;
+
+  function commit() {
+    if (committed) return;
+    committed = true;
+    const value = input.value.trim();
+    input.remove();
+    titleText.style.display = "";
+    onCommit(value);
+  }
+
+  function cancel() {
+    if (committed) return;
+    committed = true;
+    input.remove();
+    titleText.style.display = "";
+  }
+
+  input.addEventListener("keydown", (e) => {
+    if (e.key === "Enter") {
+      e.preventDefault();
+      commit();
+    }
+    if (e.key === "Escape") {
+      e.preventDefault();
+      cancel();
+    }
+    e.stopPropagation();
+  });
+  input.addEventListener("blur", () => commit());
+  input.addEventListener("mousedown", (e) => e.stopPropagation());
+}
+
+export function startInlineAutoRunEdit(dom, tile, onCommit) {
+  const existing = dom.titleText.parentNode.querySelector(".tile-rename-input");
+  if (existing) return;
+  const titleText = dom.titleText;
+
+  const input = document.createElement("input");
+  input.type = "text";
+  input.className = "tile-rename-input tile-autorun-input";
+  input.placeholder = "Auto-run command...";
+  input.value = tile.autoRunCommand ?? "";
   titleText.style.display = "none";
   titleText.parentNode.insertBefore(input, titleText);
   input.select();

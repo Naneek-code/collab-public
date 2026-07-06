@@ -6,7 +6,7 @@ import {
 } from "./canvas-state.js";
 import {
 	createTileDOM, positionTile, updateTileTitle, getTileLabel,
-	startInlineRename, applyTileColor,
+	startInlineRename, applyTileColor, startInlineAutoRunEdit,
 } from "./tile-renderer.js";
 import { toCollabFileUrl } from "@collab/shared/collab-file-url";
 import { workspaceRootMatch } from "@collab/shared/path-utils";
@@ -663,7 +663,15 @@ export function createTileManager({
 				saveCanvasImmediate();
 			},
 			onTogglePin: (id) => toggleTilePin(id),
-			onSetAutoRun: (id, cmd) => setTileAutoRun(id, cmd),
+			onSetAutoRun: (id) => {
+				const t = getTile(id);
+				const d = tileDOMs.get(id);
+				if (!t || !d) return;
+				startInlineAutoRunEdit(d, t, (newCmd) => {
+					setTileAutoRun(id, newCmd);
+				});
+			},
+			onClearAutoRun: (id) => setTileAutoRun(id, ""),
 		});
 
 		// Double-click title bar → center tile in viewport
