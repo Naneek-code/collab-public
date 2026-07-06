@@ -69,12 +69,14 @@ body {
 }
 
 html.platform-win,
-body.platform-win,
 html.platform-darwin,
-body.platform-darwin,
-html.platform-linux,
-body.platform-linux {
-	background: var(--custom-window-bg, transparent);
+html.platform-linux {
+	background: transparent !important;
+}
+
+body.platform-win,
+body.platform-darwin {
+	background: transparent !important;
 }
 
 body.platform-linux {
