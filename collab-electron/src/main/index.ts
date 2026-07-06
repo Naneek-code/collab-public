@@ -521,7 +521,6 @@ function createWindow(): void {
   if (process.platform === "linux") {
     Object.assign(windowOptions, {
       frame: false,
-      transparent: true,
     } satisfies Partial<Electron.BrowserWindowConstructorOptions>);
   }
 
