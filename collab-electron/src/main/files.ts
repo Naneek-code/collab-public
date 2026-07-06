@@ -76,10 +76,36 @@ export async function countTreeFiles(
   dirPath: string,
   filter?: FileFilter,
   rootPath?: string,
+  state: { visited: number } = { visited: 0 },
 ): Promise<number> {
+  const name = basename(dirPath);
+  const ignoredNames = new Set([
+    "node_modules", ".git", ".venv", "venv", "env",
+    ".expo", ".next", ".nuxt", "dist", "build", "target", ".cache"
+  ]);
+  
+  if (ignoredNames.has(name)) {
+    return 0;
+  }
+
+  if (state.visited > 500) {
+    return 0;
+  }
+
   let count = 0;
-  const entries = await readdir(dirPath, { withFileTypes: true });
+  let entries;
+  try {
+    entries = await readdir(dirPath, { withFileTypes: true });
+  } catch {
+    return 0;
+  }
+
   for (const e of entries) {
+    state.visited++;
+    if (state.visited > 500) {
+      break;
+    }
+
     if (!(await shouldIncludeEntryWithContent(dirPath, e, filter, rootPath))) {
       continue;
     }
@@ -89,6 +115,7 @@ export async function countTreeFiles(
         join(dirPath, e.name),
         filter,
         rootPath,
+        state,
       );
     } else {
       count += 1;
