@@ -75,6 +75,10 @@
 			{
 				"from": "packages/collab-canvas-skill",
 				"to": "collab-canvas-skill"
+			},
+			{
+				"from": "resources/icon.png",
+				"to": "icon.png"
 			}
 		],
 		"mac": {
@@ -117,6 +121,7 @@
 		},
 		"linux": {
 			"category": "Development",
+			"icon": "build/icon.png",
 			"target": [
 				{
 					"target": "AppImage",

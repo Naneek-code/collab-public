@@ -89,7 +89,8 @@ body.platform-darwin {
 	align-items: center;
 }
 
-.platform-win #titlebar {
+.platform-win #titlebar,
+.platform-linux #titlebar {
 	background: var(--bg);
 	border-bottom: 1px solid var(--border);
 }
@@ -130,7 +131,8 @@ body.platform-darwin {
 	-webkit-app-region: no-drag;
 }
 
-.platform-win #window-controls {
+.platform-win #window-controls,
+.platform-linux #window-controls {
 	display: flex;
 }
 
@@ -936,7 +938,8 @@ body.titlebar-collapsed #panels {
 	transition: opacity 0.15s ease-in-out, top 0.15s ease-in-out;
 }
 
-.platform-win #titlebar-toggle {
+.platform-win #titlebar-toggle,
+.platform-linux #titlebar-toggle {
 	display: block;
 }
 
@@ -948,7 +951,8 @@ body.titlebar-collapsed #titlebar {
 	display: none;
 }
 
-.platform-win.titlebar-collapsed #nav-toolbar {
+.platform-win.titlebar-collapsed #nav-toolbar,
+.platform-linux.titlebar-collapsed #nav-toolbar {
 	padding-top: 8px;
 }
 

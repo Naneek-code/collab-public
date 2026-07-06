@@ -483,11 +483,16 @@ function createWindow(): void {
     (saved.isMaximized || boundsVisibleOnAnyDisplay(saved));
   const state = useSaved ? saved : DEFAULT_STATE;
 
+  const iconPath = app.isPackaged
+    ? join(process.resourcesPath, "icon.png")
+    : join(__dirname, "../../build/icon.png");
+
   const windowOptions: Electron.BrowserWindowConstructorOptions = {
     width: state.width,
     height: state.height,
     minWidth: 400,
     minHeight: 400,
+    icon: iconPath,
     webPreferences: {
       preload: getPreloadPath("shell"),
       contextIsolation: true,
@@ -510,6 +515,12 @@ function createWindow(): void {
       titleBarStyle: "hidden",
       backgroundColor: "#00000000",
       backgroundMaterial: "mica",
+    } satisfies Partial<Electron.BrowserWindowConstructorOptions>);
+  }
+
+  if (process.platform === "linux") {
+    Object.assign(windowOptions, {
+      frame: false,
     } satisfies Partial<Electron.BrowserWindowConstructorOptions>);
   }
 

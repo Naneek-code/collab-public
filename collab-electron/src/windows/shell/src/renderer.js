@@ -37,9 +37,9 @@ document.body.classList.toggle("platform-darwin", IS_DARWIN);
 document.documentElement.classList.toggle("platform-linux", IS_LINUX);
 document.body.classList.toggle("platform-linux", IS_LINUX);
 
-// -- Windows window controls --
+// -- Window controls (Windows & Linux) --
 
-if (IS_WINDOWS) {
+if (IS_WINDOWS || IS_LINUX) {
 	const winControls = document.getElementById("window-controls");
 	document
 		.getElementById("win-minimize")
