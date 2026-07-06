@@ -77,6 +77,7 @@ export function createTileManager({
 				pinned: t.pinned,
 				pinnedX: t.pinnedX,
 				pinnedY: t.pinnedY,
+				autoRunCommand: t.autoRunCommand,
 			})),
 			frames: getFrames(),
 			viewport: {
@@ -188,6 +189,17 @@ export function createTileManager({
 			dom.pinBtn.title = tile.pinned ? "Unpin tile" : "Pin tile";
 		}
 		
+		saveCanvasImmediate();
+	}
+
+	function setTileAutoRun(id, cmd) {
+		const tile = getTile(id);
+		if (!tile) return;
+		if (cmd) {
+			tile.autoRunCommand = cmd;
+		} else {
+			delete tile.autoRunCommand;
+		}
 		saveCanvasImmediate();
 	}
 
@@ -316,6 +328,9 @@ export function createTileManager({
 		// Docker-backed terminals (exec / logs) carry their session kind here.
 		if (tile.target) {
 			params.set("target", tile.target);
+		}
+		if (tile.autoRunCommand) {
+			params.set("autoRunCommand", tile.autoRunCommand);
 		}
 		const qs = params.toString();
 		wv.setAttribute(
@@ -648,6 +663,7 @@ export function createTileManager({
 				saveCanvasImmediate();
 			},
 			onTogglePin: (id) => toggleTilePin(id),
+			onSetAutoRun: (id, cmd) => setTileAutoRun(id, cmd),
 		});
 
 		// Double-click title bar → center tile in viewport

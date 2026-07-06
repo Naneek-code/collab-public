@@ -287,6 +287,11 @@ export function createTileDOM(tile, callbacks) {
         ...(tile.color
           ? [{ id: "reset-color", label: "Reset Color" }]
           : []),
+        { id: "separator", label: "" },
+        { id: "set-autorun", label: "Set Auto-run Command…" },
+        ...(tile.autoRunCommand
+          ? [{ id: "clear-autorun", label: "Clear Auto-run Command" }]
+          : []),
       ]);
       if (selected === "rename" && callbacks.onRename) {
         callbacks.onRename(tile.id);
@@ -298,6 +303,16 @@ export function createTileDOM(tile, callbacks) {
         );
       } else if (selected === "reset-color" && callbacks.onResetColor) {
         callbacks.onResetColor(tile.id);
+      } else if (selected === "set-autorun" && callbacks.onSetAutoRun) {
+        const cmd = window.prompt(
+          "Enter command to auto-run when this terminal resets:",
+          tile.autoRunCommand || "",
+        );
+        if (cmd !== null) {
+          callbacks.onSetAutoRun(tile.id, cmd);
+        }
+      } else if (selected === "clear-autorun" && callbacks.onSetAutoRun) {
+        callbacks.onSetAutoRun(tile.id, "");
       }
     });
   }

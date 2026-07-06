@@ -33,6 +33,7 @@ function App() {
     const cwd = params.get("cwd") || undefined;
     const tileId = params.get("tileId") || undefined;
     const urlTarget = params.get("target") || undefined;
+    const autoRunCommand = params.get("autoRunCommand") || undefined;
 
     let cancelled = false;
 
@@ -98,7 +99,23 @@ function App() {
               result.cwdHostPath,
             );
           }
-          if (binding) injectResume(result.sessionId, binding);
+          if (binding) {
+            injectResume(result.sessionId, binding);
+          } else if (autoRunCommand) {
+            let sent = false;
+            const send = () => {
+              if (sent || cancelled) return;
+              sent = true;
+              window.api.offPtyData(result.sessionId, onData);
+              window.api.ptyWrite(result.sessionId, `${autoRunCommand}\r`);
+            };
+            const onData = () => {
+              window.api.offPtyData(result.sessionId, onData);
+              setTimeout(send, 600);
+            };
+            window.api.onPtyData(result.sessionId, onData);
+            setTimeout(send, 5000);
+          }
         })
         .catch(() => {
           if (!cancelled) setExited(true);
