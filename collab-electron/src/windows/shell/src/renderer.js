@@ -119,7 +119,7 @@ if (fsButton) {
 	// -- Title bar show/hide (Windows) --
 
 	const titlebarToggle = document.getElementById("titlebar-toggle");
-	if (IS_WINDOWS && titlebarToggle) {
+	if ((IS_WINDOWS || IS_LINUX) && titlebarToggle) {
 		const applyTitlebarHidden = (hidden) => {
 			document.body.classList.toggle("titlebar-collapsed", hidden);
 			titlebarToggle.setAttribute("aria-pressed", String(!hidden));

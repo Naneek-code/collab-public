@@ -400,11 +400,12 @@ body.window-fullscreen #win-maximize {
 	-webkit-app-region: no-drag;
 }
 
-.platform-win #workspace-popover {
+.platform-win #workspace-popover,
+.platform-linux #workspace-popover {
 	left: 12px;
 }
 
-body:not(.platform-win) #workspace-popover {
+body.platform-darwin #workspace-popover {
 	left: 78px;
 }
 
@@ -494,7 +495,8 @@ body.titlebar-collapsed #panels {
 	background: rgba(var(--bg-rgb), calc(1 - (1 - var(--canvas-opacity)) / 2));
 }
 
-.platform-win #panel-nav {
+.platform-win #panel-nav,
+.platform-linux #panel-nav {
 	background: rgba(var(--bg-rgb), calc(1 - (1 - var(--canvas-opacity)) / 2));
 }
 
@@ -544,7 +546,8 @@ body.titlebar-collapsed #panels {
 	box-shadow: none;
 }
 
-.platform-win #panel-viewer {
+.platform-win #panel-viewer,
+.platform-linux #panel-viewer {
 	background: rgba(var(--canvas-bg-rgb), calc(1 - (1 - var(--canvas-opacity)) / 2));
 }
 
@@ -554,7 +557,8 @@ body.titlebar-collapsed #panels {
 	display: none !important;
 }
 
-.platform-win #panel-agent {
+.platform-win #panel-agent,
+.platform-linux #panel-agent {
 	background: rgba(var(--bg-rgb), calc(1 - (1 - var(--canvas-opacity)) / 2));
 }
 
