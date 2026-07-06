@@ -213,11 +213,6 @@ export const FolderRow = React.memo(function FolderRow({
 					{item.name}
 				</span>
 			)}
-			{item.childCount != null && (
-				<span className="collection-tree-count">
-					{item.childCount}
-				</span>
-			)}
 			{gitStatus && (
 				<span className={`git-status-badge git-status-${gitStatus}`}>
 					{gitStatus === 'modified' ? 'M' : gitStatus === 'added' ? 'A' : 'U'}

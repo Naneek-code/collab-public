@@ -72,58 +72,6 @@ export async function shouldIncludeEntryWithContent(
   return !(await filter.isBinaryFile(fullPath));
 }
 
-export async function countTreeFiles(
-  dirPath: string,
-  filter?: FileFilter,
-  rootPath?: string,
-  state: { visited: number } = { visited: 0 },
-): Promise<number> {
-  const name = basename(dirPath);
-  const ignoredNames = new Set([
-    "node_modules", ".git", ".venv", "venv", "env",
-    ".expo", ".next", ".nuxt", "dist", "build", "target", ".cache"
-  ]);
-  
-  if (ignoredNames.has(name)) {
-    return 0;
-  }
-
-  if (state.visited > 500) {
-    return 0;
-  }
-
-  let count = 0;
-  let entries;
-  try {
-    entries = await readdir(dirPath, { withFileTypes: true });
-  } catch {
-    return 0;
-  }
-
-  for (const e of entries) {
-    state.visited++;
-    if (state.visited > 500) {
-      break;
-    }
-
-    if (!(await shouldIncludeEntryWithContent(dirPath, e, filter, rootPath))) {
-      continue;
-    }
-
-    if (e.isDirectory()) {
-      count += await countTreeFiles(
-        join(dirPath, e.name),
-        filter,
-        rootPath,
-        state,
-      );
-    } else {
-      count += 1;
-    }
-  }
-  return count;
-}
-
 export async function fsReadDir(
   dirPath: string,
   filter?: FileFilter,
@@ -140,20 +88,11 @@ export async function fsReadDir(
     filtered.map(async (e) => {
       let createdAt = "";
       let modifiedAt = "";
-      let fileCount: number | undefined;
       if (e.isFile()) {
         try {
           const s = await stat(join(dirPath, e.name));
           createdAt = s.birthtime.toISOString();
           modifiedAt = s.mtime.toISOString();
-        } catch {}
-      } else if (e.isDirectory()) {
-        try {
-          fileCount = await countTreeFiles(
-            join(dirPath, e.name),
-            filter,
-            rootPath,
-          );
         } catch {}
       }
       const entry: DirEntry = {
@@ -164,7 +103,6 @@ export async function fsReadDir(
         createdAt,
         modifiedAt,
       };
-      if (fileCount !== undefined) entry.fileCount = fileCount;
       return entry;
     }),
   );
