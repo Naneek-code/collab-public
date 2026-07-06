@@ -51,8 +51,10 @@ if (IS_WINDOWS || IS_LINUX) {
 		.getElementById("win-close")
 		.addEventListener("click", () => window.shellApi.windowClose());
 
-	const syncMaximized = (maximized) =>
+	const syncMaximized = (maximized) => {
 		winControls.classList.toggle("is-maximized", maximized);
+		document.body.classList.toggle("window-maximized", maximized);
+	};
 	window.shellApi.windowIsMaximized().then(syncMaximized);
 	window.shellApi.onWindowMaximizeChange(syncMaximized);
 }
@@ -65,6 +67,7 @@ if (fsButton) {
 
 	const syncFullscreen = (isFullscreen) => {
 		fsButton.classList.toggle("is-fullscreen", isFullscreen);
+		document.body.classList.toggle("window-fullscreen", isFullscreen);
 	};
 	window.shellApi.windowIsFullscreen().then(syncFullscreen);
 	window.shellApi.onWindowFullscreenChange(syncFullscreen);

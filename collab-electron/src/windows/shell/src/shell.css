@@ -71,8 +71,36 @@ body {
 html.platform-win,
 body.platform-win,
 html.platform-darwin,
-body.platform-darwin {
+body.platform-darwin,
+html.platform-linux,
+body.platform-linux {
 	background: var(--custom-window-bg, transparent);
+}
+
+body.platform-linux {
+	border-radius: 12px;
+	overflow: hidden;
+	background: var(--custom-window-bg, var(--bg));
+	border: 1px solid var(--border);
+}
+
+body.platform-linux.window-maximized,
+body.platform-linux.window-fullscreen {
+	border-radius: 0px;
+	border: none;
+}
+
+.titlebar-app-title {
+	position: absolute;
+	left: 50%;
+	transform: translateX(-50%);
+	font-family: var(--font-sans);
+	font-size: 13px;
+	font-weight: 600;
+	color: var(--fg);
+	opacity: 0.35;
+	pointer-events: none;
+	letter-spacing: 0.3px;
 }
 
 /* ── Titlebar ── */
@@ -87,6 +115,11 @@ body.platform-darwin {
 	z-index: 100;
 	display: flex;
 	align-items: center;
+}
+
+body.platform-linux:not(.window-maximized):not(.window-fullscreen) #titlebar {
+	border-top-left-radius: 11px;
+	border-top-right-radius: 11px;
 }
 
 .platform-win #titlebar,
@@ -153,6 +186,10 @@ body.platform-darwin {
 #window-controls button:hover {
 	background: color-mix(in srgb, var(--fg) 9%, transparent);
 	color: var(--fg);
+}
+
+body.window-fullscreen #win-maximize {
+	display: none !important;
 }
 
 #win-close:hover {
