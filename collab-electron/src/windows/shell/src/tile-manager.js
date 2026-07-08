@@ -975,6 +975,10 @@ export function createTileManager({
 						color: saved.color,
 						userTitle: saved.userTitle,
 						autoTitle: saved.autoTitle,
+						pinned: saved.pinned,
+						pinnedX: saved.pinnedX,
+						pinnedY: saved.pinnedY,
+						autoRunCommand: saved.autoRunCommand,
 					},
 				);
 				spawnTerminalWebview(tile);
@@ -985,6 +989,9 @@ export function createTileManager({
 						width: saved.width,
 						height: saved.height,
 						zIndex: saved.zIndex,
+						pinned: saved.pinned,
+						pinnedX: saved.pinnedX,
+						pinnedY: saved.pinnedY,
 					},
 				);
 				spawnDockerWebview(tile);
@@ -997,6 +1004,9 @@ export function createTileManager({
 						zIndex: saved.zIndex,
 						folderPath: saved.folderPath,
 						url: saved.url,
+						pinned: saved.pinned,
+						pinnedX: saved.pinnedX,
+						pinnedY: saved.pinnedY,
 					},
 				);
 				spawnVscodeWebview(tile);
@@ -1009,6 +1019,9 @@ export function createTileManager({
 						zIndex: saved.zIndex,
 						folderPath: saved.folderPath,
 						workspacePath: saved.workspacePath,
+						pinned: saved.pinned,
+						pinnedX: saved.pinnedX,
+						pinnedY: saved.pinnedY,
 					},
 				);
 				spawnGraphWebview(tile);
@@ -1020,6 +1033,9 @@ export function createTileManager({
 						height: saved.height,
 						zIndex: saved.zIndex,
 						url: saved.url,
+						pinned: saved.pinned,
+						pinnedX: saved.pinnedX,
+						pinnedY: saved.pinnedY,
 					},
 				);
 				spawnBrowserWebview(tile);
@@ -1030,6 +1046,9 @@ export function createTileManager({
 						width: saved.width,
 						height: saved.height,
 						zIndex: saved.zIndex,
+						pinned: saved.pinned,
+						pinnedX: saved.pinnedX,
+						pinnedY: saved.pinnedY,
 					},
 				);
 			}
